@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAC-MAN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Courier+Prime&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#06040a;--gold:#d4a017;--gold2:#f5c842;--amber:#e8892a;}
+body{
+  background:var(--bg);font-family:'Courier Prime',monospace;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;overflow:hidden;color:var(--gold);
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 60% 40% at 50% 100%,rgba(212,160,23,0.07) 0%,transparent 60%),
+    repeating-linear-gradient(45deg,transparent,transparent 30px,rgba(212,160,23,0.012) 30px,rgba(212,160,23,0.012) 31px);
+  pointer-events:none;z-index:0;
+}
+.wrap{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:10px;}
+h1{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(18px,4vw,32px);letter-spacing:10px;
+   color:var(--gold2);text-shadow:0 0 16px rgba(212,160,23,0.7);}
+h1::before,h1::after{content:'◆';font-size:.5em;color:var(--amber);vertical-align:middle;margin:0 8px;}
+.hud{display:flex;gap:28px;font-size:13px;color:rgba(212,160,23,.5);letter-spacing:2px;}
+.hud span{color:var(--gold2);text-shadow:0 0 6px var(--gold);}
+.cw{position:relative;}
+canvas{display:block;background:#04020a;border:1px solid rgba(212,160,23,.3);
+  box-shadow:0 0 24px rgba(212,160,23,.12);}
+#ov{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+  background:rgba(4,2,10,.92);backdrop-filter:blur(3px);transition:opacity .3s;
+}
+#ov.hide{opacity:0;pointer-events:none;}
+.ot{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(13px,3vw,20px);
+    color:var(--gold2);text-shadow:0 0 14px var(--gold);text-align:center;letter-spacing:4px;line-height:1.8;}
+.os{font-size:13px;color:rgba(212,160,23,.5);text-align:center;line-height:2.2;}
+.btn{font-family:'Cinzel',serif;font-size:13px;font-weight:700;letter-spacing:3px;
+     padding:9px 26px;background:transparent;color:var(--gold2);border:1px solid var(--gold);
+     cursor:pointer;text-shadow:0 0 8px var(--gold);transition:all .15s;}
+.btn:hover{background:rgba(212,160,23,.1);}
+.pts-popup{
+  position:absolute;pointer-events:none;
+  font-family:'Cinzel',serif;font-weight:900;font-size:16px;
+  color:#f5c842;text-shadow:0 0 10px #f5c842, 0 0 20px rgba(245,200,66,.5);
+  animation:ptsUp .9s ease-out forwards;white-space:nowrap;z-index:30;
+}
+@keyframes ptsUp{
+  0%{transform:translateY(0) scale(1.2);opacity:1;}
+  100%{transform:translateY(-50px) scale(0.8);opacity:0;}
+}
+/* hearts */
+#hc{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden;}
+.hp{position:absolute;top:-60px;animation:hf linear forwards;user-select:none;
+    filter:drop-shadow(0 0 8px rgba(255,80,160,.9));}
+@keyframes hf{0%{transform:translateY(0) scale(.6);opacity:0;}10%{opacity:1;}50%{opacity:1;}100%{transform:translateY(110vh) scale(.8);opacity:0;}}
+.eb{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:60;
+    background:rgba(6,3,12,.96);border:1px solid #ff50a0;padding:18px 32px;text-align:center;
+    pointer-events:none;animation:bp 2.8s ease forwards;box-shadow:0 0 40px rgba(255,80,160,.4);
+    font-family:'Cinzel',serif;font-weight:700;}
+.eb .t{font-size:clamp(9px,2vw,14px);color:#ff50a0;text-shadow:0 0 12px #ff50a0;letter-spacing:3px;line-height:2;}
+.eb .s{font-size:12px;color:rgba(255,160,210,.7);margin-top:4px;letter-spacing:2px;font-family:'Courier Prime',monospace;}
+@keyframes bp{0%{transform:translate(-50%,-50%) scale(0);opacity:0;}15%{transform:translate(-50%,-50%) scale(1.08);opacity:1;}25%,75%{transform:translate(-50%,-50%) scale(1);opacity:1;}100%{transform:translate(-50%,-50%) scale(.8);opacity:0;}}
+</style>
+</head>
+<body>
+<div id="hc"></div>
+<div class="wrap">
+  <h1>PAC-MAN</h1>
+  <div class="hud">
+    <div>SCORE: <span id="sc">0</span></div>
+    <div>BEST: <span id="bs">0</span></div>
+    <div>LEVEL: <span id="lv">1</span></div>
+  </div>
+  <div class="cw">
+    <canvas id="c" width="420" height="440"></canvas>
+    <div id="ov">
+      <div class="ot" id="ot">◆ PAC-MAN ◆</div>
+      <div class="os" id="os">← → ↑ ↓ &nbsp;/&nbsp; WASD para mover<br>Come todos los puntos<br>¡Evita los fantasmas!</div>
+      <button class="btn" id="sb">▶ INICIAR</button>
+    </div>
+  </div>
+  <div class="lv">VIDAS: <span id="li">●●●●●●●</span></div>
+</div>
+
+<script>
+// ─── CANVAS & REFS ───────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const ov     = document.getElementById('ov');
+const ot     = document.getElementById('ot');
+const os     = document.getElementById('os');
+const sb     = document.getElementById('sb');
+
+// ─── MAP ─────────────────────────────────────────────────────────
+// Tiles: 0=open, 1=wall, 2=dot, 3=pellet
+// 22 cols × 22 rows → each cell = 420/22 ≈ 19px, 440/22 = 20px
+const COLS = 22, ROWS = 22;
+const CW = canvas.width / COLS;   // cell width  ≈19.09
+const CH = canvas.height / ROWS;  // cell height = 20
+
+const T = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,1,2,1],
+  [1,3,1,1,1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,1,3,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,1,2,1,2,1,1,1,1,1,1,1,1,2,1,2,1,2,1],
+  [1,3,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,1,2,2,3,1],
+  [1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,1,1,1,2,1,1,1],
+  [1,1,1,1,2,1,0,0,0,0,0,0,0,0,0,0,0,1,2,1,1,1],
+  [0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0],
+  [1,1,1,1,2,1,0,0,0,0,0,0,0,0,0,0,0,1,2,1,1,1],
+  [1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,1,1,1,2,1,1,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,2,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,2,2,1],
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,1],
+  [1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,2,1,1,2,1,1,1,1,1,1,2,1,1,2,1,1,2,1],
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,1],
+  [1,2,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+// ─── STATE ───────────────────────────────────────────────────────
+let map, score, best=0, lives, level;
+let running=false, gameOver=false, paused=false;
+let dots=0, frightFrames=0;
+let heartDone=new Set();
+let raf=0, tick=0, dying=false;
+
+// Pac stored as tile position + sub-pixel offset for smooth animation
+// Movement is tick-based: every N frames we move one tile
+let pac, ghosts;
+
+const HEART_MS = [
+  {s:50,   e:'🌹', t:'¡AMOR A PRIMERA VISTA!',     b:'50 PTS • TU CORAZÓN YA LATE'},
+  {s:200,  e:'💖', t:'¡WAKA WAKA DE AMOR!',         b:'200 PTS • GOLDEN ROMANCE'},
+  {s:400,  e:'💗', t:'¡FANTASMA ENAMORADO!',        b:'400 PTS • GHOST LOVER'},
+  {s:777,  e:'💞', t:'¡777 — JACKPOT DE AMOR!',     b:'NÚMERO MÁGICO • EL UNIVERSO TE QUIERE'},
+  {s:1500, e:'💝', t:'¡AMOR DORADO ETERNO!',        b:'1500 PTS • GOLDEN AGE LEGEND'},
+];
+
+const GC = ['#ff3355','#ffaadd','#22aaff','#ff8800']; // ghost colours
+
+// ─── MAP HELPERS ─────────────────────────────────────────────────
+function resetMap(){
+  map = T.map(r=>[...r]);
+  dots = map.flat().filter(v=>v===2||v===3).length;
+}
+
+function wall(c,r){
+  if(r<0||r>=ROWS||c<0||c>=COLS) return false; // tunnel edges
+  return map[r][c]===1;
+}
+
+// ─── ENTITY HELPERS ──────────────────────────────────────────────
+// Entities use col/row as their logical position (integers when aligned)
+// and px/py as smooth pixel position (interpolated)
+function makePac(){
+  return {col:10,row:15, px:10*CW+CW/2, py:15*CH+CH/2,
+          dc:0,dr:0, wc:0,wr:0, // current dir, wanted dir
+          t:0, // sub-tile progress 0→1
+          mouth:0.15, mouthSpd:1};
+}
+
+function makeGhost(col,row,dc,dr,ci,delay){
+  return {col,row, px:col*CW+CW/2, py:row*CH+CH/2,
+          dc,dr, ci, delay,
+          t:0, frightened:false, eaten:false};
+}
+
+function initGhosts(){
+  ghosts = [
+    makeGhost(10, 8, 1, 0, 0, 0),
+    makeGhost(9,  9, 0,-1, 1, 60),
+    makeGhost(10, 9, 0, 1, 2, 120),
+    makeGhost(11, 9,-1, 0, 3, 180),
+  ];
+}
+
+// ─── MOVEMENT SPEED ──────────────────────────────────────────────
+// Every PACE frames, entity moves one tile
+function pacePac()   { return Math.max(5, 7 - (level-1)); }
+function paceGhost() { return Math.max(14, 22 - (level-1)); }
+function paceFright(){ return 32; }
+
+// ─── PAC STEP ────────────────────────────────────────────────────
+function stepPac(){
+  const pace = pacePac();
+  pac.t += 1/pace;
+
+  // Mouth animation
+  pac.mouth += 0.07 * pac.mouthSpd;
+  if(pac.mouth>0.33) pac.mouthSpd=-1;
+  if(pac.mouth<0.02) pac.mouthSpd=1;
+
+  if(pac.t < 1){
+    // Interpolate pixel position
+    pac.px = (pac.col - pac.dc + pac.dc*(pac.t)) * CW + CW/2;
+    pac.py = (pac.row - pac.dr + pac.dr*(pac.t)) * CH + CH/2;
+    // tunnel wrap
+    if(pac.px < 0)         pac.px = canvas.width + pac.px;
+    if(pac.px > canvas.width)  pac.px -= canvas.width;
+    return;
+  }
+
+  // Arrived at new tile
+  pac.t = 0;
+  pac.px = pac.col*CW + CW/2;
+  pac.py = pac.row*CH + CH/2;
+
+  // Eat
+  if(map[pac.row][pac.col]===2){ map[pac.row][pac.col]=0; score+=10; dots--; scoreChanged(); }
+  if(map[pac.row][pac.col]===3){
+    map[pac.row][pac.col]=0; score+=50; dots--;
+    frightFrames = 450;
+    ghosts.forEach(g=>{ if(!g.eaten){ g.frightened=true; g.dc*=-1; g.dr*=-1; } });
+    scoreChanged();
+  }
+
+  // Try wanted direction
+  if((pac.wc!==0||pac.wr!==0)){
+    const nc=pac.col+pac.wc, nr=pac.row+pac.wr;
+    if(!wall(nc,nr)){
+      pac.dc=pac.wc; pac.dr=pac.wr;
+    }
+  }
+
+  // Move
+  let nc=pac.col+pac.dc, nr=pac.row+pac.dr;
+  // tunnel
+  if(nc<0) nc=COLS-1;
+  if(nc>=COLS) nc=0;
+  if(!wall(nc,nr)){
+    pac.col=nc; pac.row=nr;
+  } else {
+    pac.dc=0; pac.dr=0;
+  }
+}
+
+// ─── GHOST STEP ──────────────────────────────────────────────────
+function stepGhost(g){
+  if(g.delay>0){ g.delay--; return; }
+
+  const pace = g.frightened ? paceFright() : paceGhost();
+  g.t += 1/pace;
+
+  if(g.t<1){
+    g.px = (g.col - g.dc + g.dc*g.t)*CW + CW/2;
+    g.py = (g.row - g.dr + g.dr*g.t)*CH + CH/2;
+    return;
+  }
+
+  // Arrived
+  g.t=0;
+  g.px=g.col*CW+CW/2;
+  g.py=g.row*CH+CH/2;
+
+  // Pick next direction at tile centre
+  const dirs=[{c:1,r:0},{c:-1,r:0},{c:0,r:1},{c:0,r:-1}];
+
+  // No U-turn unless no other option
+  let opts=dirs.filter(d=>{
+    if(d.c===-g.dc && d.r===-g.dr) return false;
+    const nc=g.col+d.c, nr=g.row+d.r;
+    return !wall(nc,nr);
+  });
+  if(opts.length===0) opts=dirs.filter(d=>!wall(g.col+d.c,g.row+d.r));
+  if(opts.length===0) return;
+
+  let chosen;
+  if(g.frightened || g.eaten){
+    if(g.eaten){
+      // Go home: tile (10,9)
+      opts.sort((a,b)=>dist(g.col+a.c,g.row+a.r,10,9)-dist(g.col+b.c,g.row+b.r,10,9));
+      chosen=opts[0];
+      if(g.col===10&&g.row===9){ g.eaten=false; g.frightened=false; g.delay=80; }
+    } else {
+      chosen=opts[Math.floor(Math.random()*opts.length)];
+    }
+  } else {
+    // Chase pac with mild personality
+    let tc=pac.col, tr=pac.row;
+    const gi=ghosts.indexOf(g);
+    if(gi===1){ tc+=pac.dc*3; tr+=pac.dr*3; }   // Pinky: target ahead
+    if(gi===3 && dist(g.col,g.row,pac.col,pac.row)<8){ tc=0; tr=ROWS-1; } // Clyde: scatter
+    opts.sort((a,b)=>dist(g.col+a.c,g.row+a.r,tc,tr)-dist(g.col+b.c,g.row+b.r,tc,tr));
+    chosen = Math.random()<0.55 ? opts[Math.min(opts.length-1, Math.floor(Math.random()*opts.length))] : opts[0];
+  }
+
+  g.dc=chosen.c; g.dr=chosen.r;
+  let nc=g.col+g.dc, nr=g.row+g.dr;
+  if(nc<0) nc=COLS-1; if(nc>=COLS) nc=0;
+  g.col=nc; g.row=nr;
+}
+
+function dist(c1,r1,c2,r2){ return Math.abs(c1-c2)+Math.abs(r1-r2); }
+
+// ─── COLLISION ───────────────────────────────────────────────────
+function checkCollision(){
+  ghosts.forEach(g=>{
+    if(g.eaten) return;
+    if(Math.abs(g.col-pac.col)<=1 && Math.abs(g.row-pac.row)<=1 &&
+       Math.hypot(g.px-pac.px, g.py-pac.py) < CW*0.85){
+      if(g.frightened){
+        g.frightened=false; g.eaten=true;
+        score+=200; if(score>best) best=score;
+        scoreChanged(); updateHUD();
+        showPointsPopup(g.px, g.py, '+200');
+      } else if(!dying){
+        loseLife();
+      }
+    }
+  });
+}
+
+function loseLife(){
+  dying=true; lives--; updateHUD();
+  if(lives<=0){
+    setTimeout(endGame, 700);
+  } else {
+    setTimeout(()=>{
+      pac=makePac(); initGhosts(); frightFrames=0; dying=false;
+    }, 900);
+  }
+}
+
+// ─── GAME CONTROL ────────────────────────────────────────────────
+function initGame(){
+  resetMap();
+  score=0; lives=7; level=1; tick=0; dying=false;
+  frightFrames=0; heartDone=new Set();
+  pac=makePac(); initGhosts();
+  updateHUD();
+}
+
+function startGame(){
+  initGame();
+  ov.classList.add('hide');
+  running=true; gameOver=false;
+  cancelAnimationFrame(raf);
+  loop();
+}
+
+function endGame(){
+  gameOver=true; running=false;
+  cancelAnimationFrame(raf);
+  if(score>best) best=score;
+  setTimeout(()=>{
+    ot.textContent='◆ GAME OVER ◆';
+    os.innerHTML=`SCORE: ${score} &nbsp; NIVEL: ${level}`;
+    sb.textContent='▶ REINICIAR';
+    ov.classList.remove('hide');
+  }, 400);
+}
+
+function togglePause(){
+  if(!running||gameOver) return;
+  paused=!paused;
+  if(paused){
+    ot.textContent='◆ PAUSA ◆'; os.innerHTML='P para continuar';
+    sb.textContent='▶ CONTINUAR'; ov.classList.remove('hide');
+  } else {
+    ov.classList.add('hide');
+  }
+}
+
+// ─── MAIN LOOP ───────────────────────────────────────────────────
+function loop(){
+  if(!running) return;
+  if(!paused && !gameOver){
+    tick++;
+    if(frightFrames>0){ frightFrames--; if(frightFrames===0) ghosts.forEach(g=>g.frightened=false); }
+    if(!dying){
+      stepPac();
+      ghosts.forEach(stepGhost);
+      checkCollision();
+    }
+    if(dots<=0){ level++; resetMap(); pac=makePac(); initGhosts(); frightFrames=0; updateHUD(); }
+  }
+  draw();
+  raf=requestAnimationFrame(loop);
+}
+
+// ─── DRAW ────────────────────────────────────────────────────────
+function draw(){
+  ctx.fillStyle='#04020a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // tiles
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const x=c*CW, y=r*CH, v=map[r][c];
+      if(v===1){
+        // Wall
+        ctx.save();
+        const g=ctx.createLinearGradient(x,y,x+CW,y+CH);
+        g.addColorStop(0,'#1c1000'); g.addColorStop(.5,'#2a1800'); g.addColorStop(1,'#110900');
+        ctx.fillStyle=g; ctx.fillRect(x,y,CW,CH);
+        ctx.strokeStyle='rgba(212,160,23,.22)'; ctx.lineWidth=.6;
+        ctx.strokeRect(x+.5,y+.5,CW-1,CH-1);
+        ctx.restore();
+      } else if(v===2){
+        ctx.save();
+        ctx.shadowBlur=6; ctx.shadowColor='#c49010';
+        ctx.fillStyle='#d4a017';
+        ctx.beginPath(); ctx.arc(x+CW/2,y+CH/2,2.2,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      } else if(v===3){
+        const p=.55+.45*Math.sin(tick*.12);
+        ctx.save();
+        ctx.globalAlpha=p; ctx.shadowBlur=14; ctx.shadowColor='#f5c842';
+        ctx.fillStyle='#f5c842';
+        ctx.beginPath(); ctx.arc(x+CW/2,y+CH/2,5,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  // ghosts
+  ghosts.forEach(g=>{
+    if(g.delay>0) return;
+    if(g.eaten){ drawEyes(g.px,g.py,g.dc,g.dr); return; }
+    const fl=g.frightened && frightFrames<80 && tick%10<5;
+    const col=fl?'#fff':g.frightened?'#2244ff':GC[g.ci];
+    drawGhost(g.px,g.py,g.dc,g.dr,col,g.frightened);
+  });
+
+  // pac
+  drawPac();
+}
+
+function drawGhost(px,py,dc,dr,col,scared){
+  const r=CW*.44;
+  ctx.save();
+  ctx.shadowBlur=10; ctx.shadowColor=col; ctx.fillStyle=col;
+  ctx.beginPath();
+  ctx.arc(px,py-r*.08,r,Math.PI,0);
+  ctx.lineTo(px+r,py+r*.9);
+  for(let i=3;i>=0;i--) ctx.lineTo(px-r+(2*r/3)*i, py+r*.9-(i%2===0?r*.28:0));
+  ctx.closePath(); ctx.fill();
+  if(!scared){
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.ellipse(px-5,py-5,3.5,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px+5,py-5,3.5,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#0033cc';
+    ctx.beginPath(); ctx.arc(px-5+dc*2,py-5+dr*2,2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px+5+dc*2,py-5+dr*2,2,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillStyle='rgba(255,255,255,.6)';
+    ctx.beginPath(); ctx.arc(px-5,py-4,1.6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px+5,py-4,1.6,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawEyes(px,py,dc,dr){
+  ctx.save();
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.ellipse(px-5,py-5,3.5,4.5,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(px+5,py-5,3.5,4.5,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0033cc';
+  ctx.beginPath(); ctx.arc(px-5+dc*2,py-5+dr*2,2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px+5+dc*2,py-5+dr*2,2,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawPac(){
+  if(dying && tick%6<3) return; // flicker on death
+  ctx.save();
+  ctx.shadowBlur=16; ctx.shadowColor='#f5c842'; ctx.fillStyle='#f5c842';
+  ctx.translate(pac.px,pac.py);
+  let rot=0;
+  if(pac.dc===1)       rot=0;
+  else if(pac.dc===-1) rot=Math.PI;
+  else if(pac.dr===-1) rot=-Math.PI/2;
+  else if(pac.dr===1)  rot=Math.PI/2;
+  ctx.rotate(rot);
+  const m=(pac.dc===0&&pac.dr===0)?0.12:pac.mouth;
+  ctx.beginPath(); ctx.moveTo(0,0);
+  ctx.arc(0,0,CW*.44,m,Math.PI*2-m);
+  ctx.closePath(); ctx.fill();
+  // eye
+  ctx.fillStyle='rgba(0,0,0,.5)';
+  ctx.beginPath(); ctx.arc(2,-CW*.16,1.6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ─── HUD ─────────────────────────────────────────────────────────
+function showPointsPopup(px, py, text){
+  const cw = document.querySelector('.cw');
+  const el = document.createElement('div');
+  el.className = 'pts-popup';
+  el.textContent = text;
+  // Position relative to canvas wrapper
+  const rect = canvas.getBoundingClientRect();
+  const wRect = cw.getBoundingClientRect();
+  el.style.left = (px - 20) + 'px';
+  el.style.top  = (py - 10) + 'px';
+  cw.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function updateHUD(){
+  document.getElementById('sc').textContent=score;
+  document.getElementById('bs').textContent=best;
+  document.getElementById('lv').textContent=level;
+  document.getElementById('li').textContent='●'.repeat(Math.max(0,lives));
+}
+
+function scoreChanged(){
+  if(score>best) best=score;
+  checkHearts(score); updateHUD();
+}
+
+// ─── INPUT ───────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  const m={ArrowLeft:[-1,0],a:[-1,0],A:[-1,0],
+            ArrowRight:[1,0],d:[1,0],D:[1,0],
+            ArrowUp:[0,-1],w:[0,-1],W:[0,-1],
+            ArrowDown:[0,1],s:[0,1],S:[0,1]};
+  if(m[e.key]){ pac.wc=m[e.key][0]; pac.wr=m[e.key][1]; }
+  if(e.key==='p'||e.key==='P') togglePause();
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
+});
+
+// Touch swipe
+let ts=null;
+canvas.addEventListener('touchstart',e=>{ts=e.touches[0];e.preventDefault();},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  if(!ts) return;
+  const dx=e.changedTouches[0].clientX-ts.clientX, dy=e.changedTouches[0].clientY-ts.clientY;
+  if(Math.abs(dx)>Math.abs(dy)){if(Math.abs(dx)>12){pac.wc=dx>0?1:-1;pac.wr=0;}}
+  else{if(Math.abs(dy)>12){pac.wr=dy>0?1:-1;pac.wc=0;}}
+  ts=null; e.preventDefault();
+},{passive:false});
+
+sb.addEventListener('click',()=>{
+  if(paused){paused=false;ov.classList.add('hide');}
+  else startGame();
+});
+
+// ─── HEARTS ──────────────────────────────────────────────────────
+function checkHearts(s){
+  HEART_MS.forEach(m=>{
+    if(s>=m.s && !heartDone.has(m.s)){ heartDone.add(m.s); triggerHearts(m); }
+  });
+}
+function triggerHearts(m){
+  const hc=document.getElementById('hc');
+  const em=['💖','💗','💓','💕','💞','💝','❤️','🩷'];
+  for(let i=0;i<30;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div'); el.className='hp';
+      el.textContent=em[Math.floor(Math.random()*em.length)];
+      el.style.left=Math.random()*100+'vw';
+      el.style.fontSize=(14+Math.random()*22)+'px';
+      el.style.animationDuration=(2.2+Math.random()*2.2)+'s';
+      el.style.animationDelay=(Math.random()*.5)+'s';
+      hc.appendChild(el); el.addEventListener('animationend',()=>el.remove());
+    },i*65);
+  }
+  const ban=document.createElement('div'); ban.className='eb';
+  ban.innerHTML=`<div class="t">${m.e} ${m.t} ${m.e}</div><div class="s">${m.b}</div>`;
+  document.body.appendChild(ban); ban.addEventListener('animationend',()=>ban.remove());
+}
+</script>
+</body>
+</html>

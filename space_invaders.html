@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPACE INVADERS</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#010d01;
+  --green:#00ff41;
+  --dkgreen:#003300;
+  --lime:#aaff44;
+  --red:#ff3333;
+  --amber:#ffcc00;
+}
+
+body{
+  background:var(--bg);
+  font-family:'Share Tech Mono',monospace;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  min-height:100vh;overflow:hidden;color:var(--green);
+}
+
+/* Scanlines */
+body::after{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.2) 2px,rgba(0,0,0,0.2) 4px);
+  pointer-events:none;z-index:100;
+}
+
+/* Phosphor glow radial */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 90% 80% at 50% 50%,rgba(0,255,65,0.04) 0%,transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+.container{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+
+h1{
+  font-family:'Major Mono Display',monospace;
+  font-size:clamp(14px,3.5vw,26px);
+  letter-spacing:8px;
+  color:var(--green);
+  text-shadow:0 0 10px var(--green),0 0 30px rgba(0,255,65,0.3);
+  animation:phosphorFlicker 6s infinite;
+}
+
+@keyframes phosphorFlicker{
+  0%,100%{opacity:1;}
+  97%{opacity:1;}97.5%{opacity:0.6;}98%{opacity:1;}99%{opacity:0.8;}99.5%{opacity:1;}
+}
+
+.hud{
+  display:flex;gap:32px;font-size:14px;
+  color:rgba(0,255,65,0.5);letter-spacing:2px;
+}
+.hud span{color:var(--green);text-shadow:0 0 6px var(--green);}
+
+.canvas-wrapper{position:relative;}
+
+#gameCanvas{
+  display:block;
+  border:1px solid rgba(0,255,65,0.25);
+  box-shadow:0 0 20px rgba(0,255,65,0.15),0 0 60px rgba(0,255,65,0.05),
+    inset 0 0 80px rgba(0,0,0,0.9);
+  background:#000a00;
+}
+
+#overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  background:rgba(0,8,0,0.9);backdrop-filter:blur(2px);
+  transition:opacity 0.3s;
+}
+#overlay.hidden{opacity:0;pointer-events:none;}
+
+.ov-title{
+  font-family:'Major Mono Display',monospace;
+  font-size:clamp(12px,2.5vw,20px);
+  color:var(--green);text-shadow:0 0 16px var(--green);
+  text-align:center;line-height:1.8;letter-spacing:4px;
+}
+.ov-sub{font-size:13px;color:rgba(0,255,65,0.5);text-align:center;line-height:2.2;}
+
+.btn{
+  font-family:'Share Tech Mono',monospace;font-size:15px;letter-spacing:3px;
+  padding:10px 28px;background:transparent;
+  color:var(--green);border:1px solid var(--green);cursor:pointer;
+  text-shadow:0 0 8px var(--green);
+  box-shadow:0 0 12px rgba(0,255,65,0.25);
+  transition:all 0.15s;
+}
+.btn:hover{background:rgba(0,255,65,0.08);box-shadow:0 0 24px rgba(0,255,65,0.4);}
+
+.lives-row{display:flex;gap:10px;font-size:18px;align-items:center;color:rgba(0,255,65,0.6);font-size:13px;letter-spacing:2px;}
+
+/* Hearts */
+#heartContainer{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden;}
+.heart-particle{position:absolute;top:-60px;animation:heartFall linear forwards;filter:drop-shadow(0 0 8px rgba(255,80,160,0.9));user-select:none;}
+@keyframes heartFall{
+  0%{transform:translateY(0) rotate(-15deg) scale(0.6);opacity:0;}
+  10%{opacity:1;transform:translateY(5vh) rotate(10deg) scale(1.2);}
+  50%{transform:translateY(50vh) rotate(-8deg) scale(1);opacity:1;}
+  100%{transform:translateY(110vh) rotate(20deg) scale(0.8);opacity:0;}
+}
+.easter-banner{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(0);z-index:60;
+  background:rgba(0,6,0,0.95);border:1px solid #ff50a0;
+  padding:20px 36px;text-align:center;pointer-events:none;
+  animation:bannerPop 2.8s ease forwards;
+  box-shadow:0 0 40px rgba(255,80,160,0.4);
+  font-family:'Major Mono Display',monospace;
+}
+.easter-banner .bt{font-size:clamp(9px,1.8vw,14px);color:#ff50a0;text-shadow:0 0 12px #ff50a0;letter-spacing:3px;line-height:2;}
+.easter-banner .bs{font-family:'Share Tech Mono',monospace;font-size:12px;color:rgba(255,160,210,0.7);margin-top:6px;letter-spacing:2px;}
+@keyframes bannerPop{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
+  15%{transform:translate(-50%,-50%) scale(1.08);opacity:1;}
+  25%{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  75%{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  100%{transform:translate(-50%,-50%) scale(0.8);opacity:0;}
+}
+</style>
+</head>
+<body>
+<div id="heartContainer"></div>
+<div class="container">
+  <h1>space invaders</h1>
+  <div class="hud">
+    <div>SCORE: <span id="scoreVal">0</span></div>
+    <div>BEST: <span id="bestVal">0</span></div>
+    <div>WAVE: <span id="waveVal">1</span></div>
+  </div>
+  <div class="canvas-wrapper">
+    <canvas id="gameCanvas" width="480" height="520"></canvas>
+    <div id="overlay">
+      <div class="ov-title" id="ovTitle">SPACE INVADERS</div>
+      <div class="ov-sub" id="ovSub">← → MOVER &nbsp;·&nbsp; ESPACIO DISPARAR<br>ELIMINA TODOS LOS ALIENS</div>
+      <button class="btn" id="startBtn">[ INICIAR ]</button>
+    </div>
+  </div>
+  <div class="lives-row">VIDAS: <span id="livesVal">❙❙❙</span></div>
+</div>
+
+<script>
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+const overlay=document.getElementById('overlay');
+const ovTitle=document.getElementById('ovTitle');
+const ovSub=document.getElementById('ovSub');
+const startBtn=document.getElementById('startBtn');
+const W=canvas.width,H=canvas.height;
+
+// Game state
+let score,best=0,lives,wave,running=false,paused=false,gameOver=false;
+let player,bullets,aliens,alienBullets,shields;
+let alienDir,alienSpeed,alienDropDist,alienDropped;
+let shootTimer,alienShootTimer;
+let heartTriggered=new Set();
+let animId,lastTime=0;
+const particles=[];
+
+const HEART_MILESTONES=[
+  {score:100, emoji:'💖',title:'¡SEÑAL DE AMOR!',      sub:'100 PTS • ALIEN HEARTS DETECTED'},
+  {score:300, emoji:'💗',title:'¡COMM LINK ACTIVO!',   sub:'300 PTS • LOVE FREQUENCY 9.9GHz'},
+  {score:700, emoji:'💘',title:'¡INFILTRADO AMOROSO!', sub:'700 PTS • ROMANCE PROTOCOL'},
+  {score:1500,emoji:'💝',title:'¡GALAXIA CONQUISTADA!',sub:'1500 PTS • LOVE WINS THE UNIVERSE'},
+];
+
+// Alien pixel sprites (5x5 bitmap)
+const ALIEN_SPRITES=[
+  [[0,1,0,1,0],[1,1,1,1,1],[1,0,1,0,1],[1,1,1,1,1],[0,1,0,1,0]], // type A
+  [[0,0,1,0,0],[0,1,1,1,0],[1,1,0,1,1],[1,1,1,1,1],[1,0,1,0,1]], // type B
+  [[1,0,1,1,1],[1,1,1,0,1],[0,1,1,0,0],[0,1,1,1,0],[1,0,0,0,1]], // type C
+];
+const ALIEN_COLORS=['#ff3333','#aaff44','#00ff41'];
+
+function initGame(){
+  score=0;lives=3;wave=1;gameOver=false;paused=false;
+  heartTriggered=new Set();
+  player={x:W/2-20,y:H-50,w:40,h:18};
+  bullets=[];alienBullets=[];
+  shields=initShields();
+  spawnAliens();
+  shootTimer=0;alienShootTimer=0;
+  updateHUD();
+}
+
+function initShields(){
+  const sh=[];
+  const positions=[60,180,300,420];
+  positions.forEach(sx=>{
+    const blocks=[];
+    // 4x3 block shield
+    for(let r=0;r<3;r++)
+      for(let c=0;c<4;c++)
+        blocks.push({x:sx+c*12,y:H-110+r*12,alive:true,hits:0});
+    sh.push(blocks);
+  });
+  return sh;
+}
+
+function spawnAliens(){
+  aliens=[];
+  const rows=4,cols=11;
+  const sx=20,sy=60;
+  for(let r=0;r<rows;r++)
+    for(let c=0;c<cols;c++)
+      aliens.push({
+        x:sx+c*40,y:sy+r*36,
+        w:28,h:22,alive:true,
+        type:Math.min(r,2),
+        animFrame:0
+      });
+  alienDir=1;
+  alienSpeed=0.10+wave*0.03;
+  alienDropDist=14;alienDropped=0;
+}
+
+function updateHUD(){
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('bestVal').textContent=best;
+  document.getElementById('waveVal').textContent=wave;
+  const livesStr=['','❙','❙❙','❙❙❙'][Math.max(0,Math.min(3,lives))];
+  document.getElementById('livesVal').textContent=livesStr||'';
+}
+
+function startGame(){
+  initGame();
+  overlay.classList.add('hidden');
+  running=true;
+  cancelAnimationFrame(animId);
+  lastTime=performance.now();
+  loop(lastTime);
+}
+
+let keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(e.key===' '){tryShoot();e.preventDefault();}
+  if((e.key==='p'||e.key==='P')&&running&&!gameOver){
+    paused=!paused;
+    if(paused){ovTitle.textContent='[ PAUSED ]';ovSub.innerHTML='P para continuar';startBtn.textContent='[ CONTINUAR ]';overlay.classList.remove('hidden');}
+    else overlay.classList.add('hidden');
+  }
+});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+// Mobile
+let mobileDir=0;
+function addMobileBtn(id,action){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('touchstart',e=>{action(true);e.preventDefault();},{passive:false});
+  el.addEventListener('touchend',e=>{action(false);e.preventDefault();},{passive:false});
+}
+
+function tryShoot(){
+  if(!running||gameOver||paused)return;
+  if(shootTimer>0)return;
+  bullets.push({x:player.x+player.w/2,y:player.y,speed:8});
+  shootTimer=18;
+}
+
+function loop(ts){
+  if(!running)return;
+  const dt=Math.min(ts-lastTime,50);lastTime=ts;
+  if(!paused&&!gameOver)update(dt);
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+
+function update(dt){
+  shootTimer=Math.max(0,shootTimer-1);
+  alienShootTimer=Math.max(0,alienShootTimer-1);
+
+  // Player movement
+  const spd=4;
+  if(keys['ArrowLeft']||keys['a']||keys['A'])player.x=Math.max(0,player.x-spd);
+  if(keys['ArrowRight']||keys['d']||keys['D'])player.x=Math.min(W-player.w,player.x+spd);
+
+  // Bullets
+  for(let i=bullets.length-1;i>=0;i--){
+    bullets[i].y-=bullets[i].speed;
+    if(bullets[i].y<-10){bullets.splice(i,1);continue;}
+
+    // Hit alien
+    let hit=false;
+    for(const a of aliens){
+      if(!a.alive)continue;
+      if(bullets[i]&&bullets[i].x>a.x&&bullets[i].x<a.x+a.w&&bullets[i].y>a.y&&bullets[i].y<a.y+a.h){
+        a.alive=false;hit=true;
+        const pts=[30,20,10,10][a.type]||10;
+        score+=pts;if(score>best)best=score;
+        checkHeartEasterEgg(score);updateHUD();
+        spawnExplosion(a.x+a.w/2,a.y+a.h/2,ALIEN_COLORS[a.type]);
+        bullets.splice(i,1);break;
+      }
+    }
+    if(hit)continue;
+
+    // Hit shield
+    for(const sh of shields){
+      for(const b of sh){
+        if(!b.alive)continue;
+        if(bullets[i]&&bullets[i].x>b.x&&bullets[i].x<b.x+10&&bullets[i].y>b.y&&bullets[i].y<b.y+10){
+          b.hits++;if(b.hits>=3)b.alive=false;
+          bullets.splice(i,1);hit=true;break;
+        }
+      }
+      if(hit)break;
+    }
+  }
+
+  // Alien bullets
+  for(let i=alienBullets.length-1;i>=0;i--){
+    alienBullets[i].y+=alienBullets[i].speed;
+    if(alienBullets[i].y>H+10){alienBullets.splice(i,1);continue;}
+
+    // Hit player
+    const ab=alienBullets[i];
+    if(ab.x>player.x&&ab.x<player.x+player.w&&ab.y>player.y&&ab.y<player.y+player.h){
+      lives--;updateHUD();
+      alienBullets.splice(i,1);
+      spawnExplosion(player.x+player.w/2,player.y+player.h/2,'#00ff41');
+      if(lives<=0){endGame();return;}
+      continue;
+    }
+
+    // Hit shield
+    let shHit=false;
+    for(const sh of shields){
+      for(const b of sh){
+        if(!b.alive)continue;
+        if(ab.x>b.x&&ab.x<b.x+10&&ab.y>b.y&&ab.y<b.y+10){
+          b.hits++;if(b.hits>=3)b.alive=false;
+          alienBullets.splice(i,1);shHit=true;break;
+        }
+      }
+      if(shHit)break;
+    }
+  }
+
+  // Alien movement
+  const liveAliens=aliens.filter(a=>a.alive);
+  if(liveAliens.length===0){wave++;spawnAliens();return;}
+
+  let maxX=Math.max(...liveAliens.map(a=>a.x+a.w));
+  let minX=Math.min(...liveAliens.map(a=>a.x));
+
+  liveAliens.forEach(a=>{a.x+=alienDir*alienSpeed;});
+
+  if(maxX+alienDir*alienSpeed>W-10||minX+alienDir*alienSpeed<10){
+    alienDir*=-1;
+    liveAliens.forEach(a=>a.y+=alienDropDist);
+    alienSpeed*=1.008;
+  }
+
+  // Animate aliens
+  liveAliens.forEach(a=>{a.animFrame=(a.animFrame+0.02)%1;});
+
+  // Aliens reach player
+  if(liveAliens.some(a=>a.y+a.h>H-60)){endGame();return;}
+
+  // Alien shoot
+  if(alienShootTimer<=0&&liveAliens.length>0){
+    const shooter=liveAliens[Math.floor(Math.random()*liveAliens.length)];
+    alienBullets.push({x:shooter.x+shooter.w/2,y:shooter.y+shooter.h,speed:0.75+wave*0.08});
+    alienShootTimer=Math.max(50,120-wave*6);
+  }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.life-=0.04;
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+
+function spawnExplosion(x,y,color){
+  for(let i=0;i<8;i++){
+    const ang=Math.random()*Math.PI*2;
+    const spd=1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,color,life:1,size:2+Math.random()*3});
+  }
+}
+
+function drawAlienSprite(a){
+  const sprite=ALIEN_SPRITES[a.type];
+  const color=ALIEN_COLORS[a.type];
+  const px=3;// pixel size
+  ctx.save();
+  ctx.shadowBlur=8;ctx.shadowColor=color;ctx.fillStyle=color;
+  const flip=Math.floor(a.animFrame*2)===0;
+  sprite.forEach((row,r)=>{
+    row.forEach((bit,c)=>{
+      if(bit){
+        const drawC=flip?c:(4-c);
+        ctx.fillRect(a.x+drawC*px,a.y+r*px,px-1,px-1);
+      }
+    });
+  });
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  // Starfield
+  ctx.fillStyle='rgba(0,255,65,0.15)';
+  for(let i=0;i<80;i++){
+    const sx=((i*127+score*0.3)%W);
+    const sy=((i*97)%H);
+    ctx.fillRect(sx,sy,1,1);
+  }
+
+  // Shields
+  shields.forEach(sh=>{
+    sh.forEach(b=>{
+      if(!b.alive)return;
+      const alpha=1-b.hits/3;
+      ctx.save();ctx.globalAlpha=alpha;ctx.shadowBlur=4;ctx.shadowColor='#00ff41';
+      ctx.fillStyle='#00aa22';ctx.fillRect(b.x,b.y,10,10);
+      ctx.fillStyle='rgba(0,255,65,0.3)';ctx.fillRect(b.x+1,b.y+1,4,3);
+      ctx.restore();
+    });
+  });
+
+  // Aliens
+  aliens.forEach(a=>{if(a.alive)drawAlienSprite(a);});
+
+  // Player ship
+  ctx.save();
+  ctx.shadowBlur=16;ctx.shadowColor='#00ff41';ctx.fillStyle='#00ff41';
+  // Base
+  ctx.fillRect(player.x+8,player.y+8,player.w-16,10);
+  // Cabin
+  ctx.fillRect(player.x+14,player.y,player.w-28,10);
+  // Cannons
+  ctx.fillRect(player.x,player.y+8,6,6);
+  ctx.fillRect(player.x+player.w-6,player.y+8,6,6);
+  // Gun barrel
+  ctx.fillRect(player.x+player.w/2-2,player.y-6,4,8);
+  ctx.restore();
+
+  // Player bullets
+  bullets.forEach(b=>{
+    ctx.save();ctx.shadowBlur=12;ctx.shadowColor='#00ff41';ctx.fillStyle='#aaff44';
+    ctx.fillRect(b.x-2,b.y-8,4,12);ctx.restore();
+  });
+
+  // Alien bullets
+  alienBullets.forEach(b=>{
+    ctx.save();ctx.shadowBlur=8;ctx.shadowColor='#ff3333';ctx.fillStyle='#ff5555';
+    ctx.fillRect(b.x-2,b.y,3,8);ctx.restore();
+  });
+
+  // Particles
+  particles.forEach(p=>{
+    ctx.save();ctx.globalAlpha=p.life;ctx.shadowBlur=6;ctx.shadowColor=p.color;
+    ctx.fillStyle=p.color;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);ctx.restore();
+  });
+
+  // Ground line
+  ctx.strokeStyle='rgba(0,255,65,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,H-30);ctx.lineTo(W,H-30);ctx.stroke();
+}
+
+function endGame(){
+  gameOver=true;running=false;if(score>best)best=score;
+  cancelAnimationFrame(animId);
+  setTimeout(()=>{
+    ovTitle.textContent='[ GAME OVER ]';
+    ovSub.innerHTML=`SCORE: ${score}<br>WAVE: ${wave}`;
+    startBtn.textContent='[ REINICIAR ]';
+    overlay.classList.remove('hidden');
+  },500);
+}
+
+function checkHeartEasterEgg(s){
+  for(const m of HEART_MILESTONES){
+    if(s>=m.score&&!heartTriggered.has(m.score)){
+      heartTriggered.add(m.score);triggerHearts(m);
+    }
+  }
+}
+function triggerHearts(m){
+  const c=document.getElementById('heartContainer');
+  const emojis=['💖','💗','💓','💕','💞','💝','❤️','🩷'];
+  for(let i=0;i<32;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');el.className='heart-particle';
+      el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      el.style.left=Math.random()*100+'vw';
+      el.style.fontSize=(14+Math.random()*22)+'px';
+      el.style.animationDuration=(2.2+Math.random()*2)+'s';
+      el.style.animationDelay=(Math.random()*0.5)+'s';
+      c.appendChild(el);el.addEventListener('animationend',()=>el.remove());
+    },i*60);
+  }
+  const ban=document.createElement('div');ban.className='easter-banner';
+  ban.innerHTML=`<div class="bt">${m.emoji} ${m.title} ${m.emoji}</div><div class="bs">${m.sub}</div>`;
+  document.body.appendChild(ban);ban.addEventListener('animationend',()=>ban.remove());
+}
+
+startBtn.addEventListener('click',()=>{
+  if(paused){paused=false;overlay.classList.add('hidden');}
+  else startGame();
+});
+</script>
+</body>
+</html>

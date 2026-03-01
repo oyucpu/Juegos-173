@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEMORY DESAMOR 💔</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --neon-red:#ff3366;
+  --neon-gold:#ffee00;
+  --neon-pink:#ff50a0;
+  --neon-cyan:#00eeff;
+  --bg:#080010;
+  --grid:rgba(255,51,102,0.035);
+}
+body{
+  background:var(--bg);
+  font-family:'Press Start 2P',monospace;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  color:var(--neon-red);
+  overflow:hidden;
+  position:relative;
+  gap:18px;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    repeating-linear-gradient(0deg,transparent,transparent 39px,var(--grid) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,var(--grid) 40px);
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at center,transparent 40%,#080010 100%);
+  pointer-events:none;z-index:0;
+}
+h1{
+  position:relative;z-index:1;
+  font-size:clamp(12px,3vw,22px);
+  color:var(--neon-red);
+  text-shadow:0 0 10px var(--neon-red),0 0 40px rgba(255,51,102,0.4);
+  letter-spacing:4px;
+  animation:flicker 4s infinite;
+}
+@keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.6}94%{opacity:1}97%{opacity:.8}98%{opacity:1}}
+.hud{
+  position:relative;z-index:1;
+  display:flex;gap:30px;font-size:9px;
+  color:rgba(255,51,102,0.6);
+}
+.hud span{color:var(--neon-gold);text-shadow:0 0 8px var(--neon-gold)}
+
+#game{
+  position:relative;z-index:1;
+  display:grid;
+  grid-template-columns:repeat(4,90px);
+  gap:12px;
+}
+
+.card{
+  width:90px;height:90px;
+  position:relative;
+  cursor:pointer;
+  transform-style:preserve-3d;
+  transition:transform 0.5s cubic-bezier(.4,0,.2,1);
+  border-radius:6px;
+}
+.card.flipped{ transform:rotateY(180deg); }
+.card.matched{ animation:matchPulse 0.5s ease forwards; cursor:default; }
+@keyframes matchPulse{
+  0%{transform:rotateY(180deg) scale(1)}
+  50%{transform:rotateY(180deg) scale(1.12)}
+  100%{transform:rotateY(180deg) scale(1)}
+}
+
+.card-face{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:6px;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+.card-back{
+  background:rgba(255,51,102,0.06);
+  border:2px solid rgba(255,51,102,0.25);
+  box-shadow:inset 0 0 20px rgba(0,0,0,0.6);
+  font-size:22px;
+  color:rgba(255,51,102,0.3);
+}
+.card-back::after{
+  content:'?';
+  font-size:22px;
+  color:rgba(255,51,102,0.35);
+  text-shadow:0 0 8px rgba(255,51,102,0.4);
+}
+.card-back:hover{
+  border-color:rgba(255,51,102,0.6);
+  background:rgba(255,51,102,0.1);
+  box-shadow:0 0 14px rgba(255,51,102,0.2),inset 0 0 20px rgba(0,0,0,0.5);
+}
+.card-front{
+  transform:rotateY(180deg);
+  background:rgba(60,0,30,0.9);
+  border:2px solid var(--neon-red);
+  box-shadow:0 0 18px rgba(255,51,102,0.45),inset 0 0 14px rgba(255,0,50,0.1);
+  font-size:32px;
+}
+.card.matched .card-front{
+  border-color:var(--neon-gold);
+  box-shadow:0 0 22px rgba(255,238,0,0.5),inset 0 0 14px rgba(255,238,0,0.08);
+  background:rgba(40,30,0,0.9);
+}
+
+/* Overlay */
+#overlay{
+  position:fixed;inset:0;
+  background:rgba(8,0,16,0.92);
+  backdrop-filter:blur(3px);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:22px;z-index:20;
+  transition:opacity 0.3s;
+}
+#overlay.hidden{opacity:0;pointer-events:none;}
+.overlay-title{
+  font-size:clamp(11px,2.8vw,18px);
+  color:var(--neon-red);
+  text-shadow:0 0 20px var(--neon-red);
+  text-align:center;line-height:2;
+}
+.overlay-sub{
+  font-size:7px;color:rgba(255,51,102,0.75);
+  text-align:center;line-height:2.8;
+}
+.btn{
+  font-family:'Press Start 2P',monospace;font-size:10px;
+  padding:12px 28px;background:transparent;
+  color:var(--neon-red);border:2px solid var(--neon-red);
+  cursor:pointer;text-shadow:0 0 8px var(--neon-red);
+  box-shadow:0 0 12px rgba(255,51,102,0.3),inset 0 0 12px rgba(255,51,102,0.04);
+  transition:all 0.15s;letter-spacing:2px;
+}
+.btn:hover{background:rgba(255,51,102,0.1);box-shadow:0 0 28px rgba(255,51,102,0.5);transform:scale(1.05)}
+
+/* Particles */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+.particle{position:absolute;top:-60px;font-size:22px;animation:pFall linear forwards;user-select:none}
+@keyframes pFall{
+  0%{transform:translateY(0) rotate(-15deg) scale(.6);opacity:0}
+  10%{opacity:1;transform:translateY(5vh) rotate(10deg) scale(1.1)}
+  50%{transform:translateY(50vh) rotate(-8deg) scale(1);opacity:1}
+  100%{transform:translateY(110vh) rotate(20deg) scale(.8);opacity:0}
+}
+
+/* Score flash */
+.score-flash{
+  position:fixed;font-size:11px;
+  color:var(--neon-gold);text-shadow:0 0 10px var(--neon-gold);
+  pointer-events:none;z-index:30;
+  animation:scoreUp 1s ease-out forwards;
+}
+@keyframes scoreUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-50px);opacity:0}}
+
+/* Easter banner */
+.easter-banner{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  z-index:60;background:rgba(8,0,16,0.96);border:2px solid var(--neon-red);
+  padding:20px 36px;text-align:center;pointer-events:none;
+  animation:bannerPop 2.8s ease forwards;
+  box-shadow:0 0 40px rgba(255,51,102,0.5);
+}
+.easter-banner .bt{font-size:clamp(9px,2vw,14px);color:var(--neon-red);text-shadow:0 0 14px var(--neon-red);letter-spacing:3px;line-height:2}
+.easter-banner .bs{font-size:7px;color:rgba(255,150,150,.7);margin-top:6px;letter-spacing:2px}
+@keyframes bannerPop{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0}
+  15%{transform:translate(-50%,-50%) scale(1.1);opacity:1}
+  25%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  75%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(.8);opacity:0}
+}
+
+.controls-hint{
+  position:relative;z-index:1;
+  font-size:7px;color:rgba(255,51,102,0.28);
+  letter-spacing:2px;text-align:center;line-height:2.5;
+}
+</style>
+</head>
+<body>
+<div id="particles"></div>
+
+<h1>💔 MEMORY DESAMOR 💔</h1>
+
+<div class="hud">
+  <div>MOVS: <span id="moves">0</span></div>
+  <div>TIEMPO: <span id="time">0</span>s</div>
+  <div>RÉCORD DE DOLOR: <span id="best">--</span></div>
+</div>
+
+<div id="game"></div>
+
+<div class="controls-hint">DEMUESTRA QUE NO PUEDES OLVIDAR NADA</div>
+
+<div id="overlay">
+  <div class="overlay-title" id="overlayTitle">💔 MEMORY<br>DESAMOR</div>
+  <div class="overlay-sub" id="overlaySub">
+    Encuentra los pares de emojis<br>
+    para demostrar que no<br>
+    puedes olvidar nada...
+  </div>
+  <button class="btn" id="startBtn">💔 SUFRIR</button>
+</div>
+
+<script>
+const SYMBOLS = ["💔","🥀","😭","🖤","💌","😢","🌧️","🔥"];
+
+let flippedCards = [], matched = 0, moves = 0;
+let timer = 0, timerInterval = null;
+let bestMoves = null, bestTime = null;
+let canFlip = true;
+let milestones = new Set();
+
+const gameEl    = document.getElementById('game');
+const overlay   = document.getElementById('overlay');
+const movesEl   = document.getElementById('moves');
+const timeEl    = document.getElementById('time');
+const bestEl    = document.getElementById('best');
+const startBtn  = document.getElementById('startBtn');
+const titleEl   = document.getElementById('overlayTitle');
+const subEl     = document.getElementById('overlaySub');
+
+function startGame() {
+  overlay.classList.add('hidden');
+  resetState();
+  buildBoard();
+  timerInterval = setInterval(() => {
+    timer++;
+    timeEl.textContent = timer;
+  }, 1000);
+}
+
+function resetState() {
+  clearInterval(timerInterval);
+  flippedCards = []; matched = 0; moves = 0; timer = 0; canFlip = true;
+  movesEl.textContent = '0';
+  timeEl.textContent  = '0';
+  gameEl.innerHTML    = '';
+  milestones          = new Set();
+}
+
+function buildBoard() {
+  const deck = [...SYMBOLS, ...SYMBOLS].sort(() => Math.random() - 0.5);
+  deck.forEach(sym => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.symbol = sym;
+
+    const back  = document.createElement('div');
+    back.className = 'card-face card-back';
+
+    const front = document.createElement('div');
+    front.className = 'card-face card-front';
+    front.textContent = sym;
+
+    card.appendChild(back);
+    card.appendChild(front);
+    card.addEventListener('click', onCardClick);
+    gameEl.appendChild(card);
+  });
+}
+
+function onCardClick() {
+  if (!canFlip) return;
+  if (this.classList.contains('flipped') || this.classList.contains('matched')) return;
+  if (flippedCards.length >= 2) return;
+
+  this.classList.add('flipped');
+  flippedCards.push(this);
+
+  if (flippedCards.length === 2) {
+    moves++;
+    movesEl.textContent = moves;
+    canFlip = false;
+    checkMatch();
+  }
+}
+
+function checkMatch() {
+  const [a, b] = flippedCards;
+  if (a.dataset.symbol === b.dataset.symbol) {
+    // Match!
+    setTimeout(() => {
+      a.classList.add('matched');
+      b.classList.add('matched');
+      flippedCards = [];
+      matched += 2;
+      canFlip = true;
+      showScoreFlash(a);
+      checkMilestone();
+      if (matched === SYMBOLS.length * 2) winGame();
+    }, 300);
+  } else {
+    // No match — flip back
+    setTimeout(() => {
+      a.classList.remove('flipped');
+      b.classList.remove('flipped');
+      flippedCards = [];
+      canFlip = true;
+    }, 900);
+  }
+}
+
+function winGame() {
+  clearInterval(timerInterval);
+  const isNewBest = bestMoves === null || moves < bestMoves || (moves === bestMoves && timer < bestTime);
+  if (bestMoves === null || moves < bestMoves) { bestMoves = moves; bestTime = timer; }
+  bestEl.textContent = bestMoves + ' movs';
+
+  triggerCelebration();
+
+  setTimeout(() => {
+    titleEl.innerHTML = '😭 LO RECORDASTE<br>TODO 😭';
+    subEl.innerHTML =
+      `MOVIMIENTOS: ${moves}<br>TIEMPO: ${timer}s<br><br>` +
+      (isNewBest ? '💔 RÉCORD DE SUFRIMIENTO 💔' : `AÚN NO SUPERAS A ${bestMoves} MOVS`);
+    startBtn.textContent = '↩ VOLVER A SUFRIR';
+    overlay.classList.remove('hidden');
+  }, 600);
+}
+
+function showScoreFlash(card) {
+  const rect = card.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'score-flash';
+  el.textContent = '💔 recuerdas';
+  el.style.left = rect.left + rect.width / 2 - 30 + 'px';
+  el.style.top  = rect.top - 10 + 'px';
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+// ─── Milestones ───
+const MILESTONE_LIST = [
+  { pairs: 2, emoji: '💔', title: 'AÚN LO RECUERDAS',    sub: '2 PARES · NO LO PUEDES OLVIDAR' },
+  { pairs: 4, emoji: '🥀', title: 'TE ESTÁ DOLIENDO',    sub: '4 PARES · LO SABÍAS DESDE EL PRINCIPIO' },
+  { pairs: 6, emoji: '😭', title: 'POR QUÉ LO HICISTE',  sub: '6 PARES · ESTO TE LO BUSCASTE' },
+  { pairs: 8, emoji: '🖤', title: 'SIGUES SOLO/A',        sub: '8 PARES · Y LO ESTARÁS SIEMPRE' },
+];
+
+function checkMilestone() {
+  const pairs = matched / 2;
+  for (const m of MILESTONE_LIST) {
+    if (pairs >= m.pairs && !milestones.has(m.pairs)) {
+      milestones.add(m.pairs);
+      const banner = document.createElement('div');
+      banner.className = 'easter-banner';
+      banner.innerHTML = `<div class="bt">${m.emoji} ${m.title} ${m.emoji}</div><div class="bs">${m.sub}</div>`;
+      document.body.appendChild(banner);
+      banner.addEventListener('animationend', () => banner.remove());
+    }
+  }
+}
+
+function triggerCelebration() {
+  const container = document.getElementById('particles');
+  const emojis = ['💔','🥀','🔥','💌','😭','🖤','✨','💫'];
+  for (let i = 0; i < 28; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'particle';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.fontSize = (16 + Math.random() * 18) + 'px';
+      el.style.animationDuration = (2 + Math.random() * 2) + 's';
+      container.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }, i * 60);
+  }
+}
+
+startBtn.addEventListener('click', () => startGame());
+</script>
+</body>
+</html>

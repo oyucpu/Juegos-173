@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PORTFOLIO DEL DESAMOR 173 💔 (Versión Simple)</title>
+  <style>
+    body { 
+      background:#0a050f; color:#ddd; font-family:sans-serif; 
+      text-align:center; padding:40px 20px; min-height:100vh; 
+    }
+    h1 { color:#ff3366; font-size:3.5rem; margin-bottom:10px; }
+    .grid { 
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); 
+      gap:20px; max-width:1100px; margin:0 auto; 
+    }
+    .card { 
+      background:rgba(255,51,102,0.1); border:2px solid #ff3366; 
+      border-radius:12px; padding:20px; cursor:pointer; transition:0.3s; 
+    }
+    .card:hover { transform:scale(1.05); background:rgba(255,51,102,0.2); }
+    .title { font-size:1.8rem; color:#ff3366; margin:10px 0; }
+  </style>
+</head>
+<body>
+  <h1>PORTFOLIO DEL DESAMOR 173</h1>
+  <p style="color:#aaa; margin-bottom:40px;">Haz clic en un juego (se abre en pestaña nueva)</p>
+
+  <div class="grid">
+    <div class="card" onclick="window.open('pacman.html')">
+      <div class="title">PAC-MAN</div>
+      <p>Come puntos, evita fantasmas del pasado</p>
+    </div>
+    <div class="card" onclick="window.open('typing.html')">
+      <div class="title">ESCRIBE & OLVIDA</div>
+      <p>Escribe las palabras que nunca te dije</p>
+    </div>
+    <div class="card" onclick="window.open('tetris.html')">
+      <div class="title">TETRIS</div>
+      <p>Apila los pedazos rotos</p>
+    </div>
+    <div class="card" onclick="window.open('asteroids.html')">
+      <div class="title">ASTEROIDS</div>
+      <p>Destruye fragmentos en el vacío</p>
+    </div>
+    <div class="card" onclick="window.open('snake.html')">
+      <div class="title">SNAKE</div>
+      <p>Alimenta la nostalgia sin morderte</p>
+    </div>
+        <div class="card" onclick="window.open('space_invaders.html')">
+      <div class="title">SPACE INVADERS</div>
+      <p>Defendiendo la Tierra con una nave de tres vidas y un corazón roto de ocho bits</p>
+    </div>
+	<div class="card" onclick="window.open('memory_desamor.html')">
+      <div class="title">MEMORY DESAMOR</div>
+      <p>Vas a 💔 SUFRIR</p>
+    </div>
+	
+  <p style="margin-top:60px; color:#555; font-size:0.9rem;">
+
+  </p>
+</body>
+</html>
