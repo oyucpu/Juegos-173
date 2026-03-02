@@ -228,7 +228,7 @@ h1{
         <span class="hm-icon">❤️</span>
         <div class="hm-info">
           <div class="hm-name" style="color:#ff3366">+ VIDA</div>
-          <div class="hm-desc">Recuperas un corazón.<br>Máximo 14 vidas.</div>
+          <div class="hm-desc">Recuperas un corazón.<br>Máximo 16 vidas.</div>
         </div>
       </div>
       <div class="hm-item">
@@ -295,7 +295,7 @@ const ROW_COLORS = ['#ff3366','#ff3366','#ff50a0','#ff50a0','#aa2244','#aa2244']
 
 // ── Physics ──
 const PADDLE_H=11, PADDLE_W_BASE=140;
-const BALL_R=7, BALL_SPEED_BASE=3.8;
+const BALL_R=7, BALL_SPEED_BASE=3.2;
 const BRICK_COLS=8, BRICK_ROWS=6;
 const BRICK_W=44, BRICK_H=16, BRICK_GAP=4;
 const BRICK_OX=(W-(BRICK_COLS*(BRICK_W+BRICK_GAP)-BRICK_GAP))/2;
@@ -337,9 +337,9 @@ let ball={x:0,y:0,vx:0,vy:0,attached:true};
 // ── Level configs ──
 // rows, cols, hitsPerRow, puChance, speedMult, extraLives(given at level start)
 const LEVEL_CONFIGS = [
-  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.60, speedMult:0.72, bonus:1, label:'EL PRIMER GOLPE'        }, // 1
-  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.65, speedMult:0.68, bonus:1, label:'AÚN NO DUELE'           }, // 2
-  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.68, speedMult:0.51, bonus:1, label:'EMPIEZA A ARDER'        }, // 3 ↓ 0.51
+  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.60, speedMult:0.50, bonus:1, label:'EL PRIMER GOLPE'        }, // 1
+  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.65, speedMult:0.51, bonus:1, label:'AÚN NO DUELE'           }, // 2
+  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.68, speedMult:0.52, bonus:1, label:'EMPIEZA A ARDER'        }, // 3 ↓ 0.51
   { rows:4, cols:8, hits:[1,1,1,1],            pu:0.67, speedMult:0.53, bonus:1, label:'LAS HERIDAS ABIERTAS'   }, // 4 ↓ 0.53
   { rows:5, cols:8, hits:[1,1,1,1,1],          pu:0.63, speedMult:0.55, bonus:1, label:'ALGO SE ROMPE'          }, // 5 ↓ 0.55
   { rows:5, cols:8, hits:[1,1,1,1,1],          pu:0.62, speedMult:0.57, bonus:1, label:'NO PUEDES PARAR'        }, // 6 ↓ 0.57
