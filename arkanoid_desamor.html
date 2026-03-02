@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARKANOID DESAMOR 💔</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#ff3366;--gold:#ffee00;--pink:#ff50a0;--bg:#080010;
+  --grid:rgba(255,51,102,0.03);
+}
+body{
+  background:var(--bg);font-family:'Press Start 2P',monospace;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;overflow:hidden;position:relative;color:var(--red);gap:14px;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 39px,var(--grid) 40px),
+             repeating-linear-gradient(90deg,transparent,transparent 39px,var(--grid) 40px);
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at center,transparent 40%,#080010 100%);
+  pointer-events:none;z-index:0;
+}
+h1{
+  position:relative;z-index:1;font-size:clamp(11px,2.5vw,18px);
+  color:var(--red);text-shadow:0 0 10px var(--red),0 0 40px rgba(255,51,102,0.4);
+  letter-spacing:4px;animation:flicker 4s infinite;
+}
+@keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.5}94%{opacity:1}97%{opacity:.75}98%{opacity:1}}
+.hud{
+  position:relative;z-index:1;display:flex;gap:20px;font-size:8px;
+  color:rgba(255,51,102,0.55);flex-wrap:wrap;justify-content:center;
+}
+.hud span{color:var(--gold);text-shadow:0 0 8px var(--gold)}
+.lives-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.life-heart{font-size:12px;transition:all 0.3s;}
+.life-heart.lost{opacity:0.12;filter:grayscale(1);}
+
+/* Power-up status bar */
+.powerup-bar{
+  position:relative;z-index:1;
+  display:flex;gap:10px;align-items:center;min-height:22px;
+  font-size:7px;color:rgba(255,51,102,0.4);
+}
+.pu-badge{
+  padding:3px 8px;border-radius:3px;
+  font-size:6px;border:1px solid;
+  animation:badgePulse 1s infinite;
+  white-space:nowrap;
+}
+@keyframes badgePulse{0%,100%{opacity:1}50%{opacity:0.6}}
+.pu-badge.wide   {color:#00eeff;border-color:#00eeff;text-shadow:0 0 6px #00eeff;}
+.pu-badge.slow   {color:#00ff88;border-color:#00ff88;text-shadow:0 0 6px #00ff88;}
+.pu-badge.multi  {color:#ffee00;border-color:#ffee00;text-shadow:0 0 6px #ffee00;}
+.pu-badge.dark   {color:#aa44ff;border-color:#aa44ff;text-shadow:0 0 6px #aa44ff;}
+.pu-badge.ghost  {color:#ff8800;border-color:#ff8800;text-shadow:0 0 6px #ff8800;}
+.pu-badge.bomba  {color:#ffdd00;border-color:#ffdd00;text-shadow:0 0 6px #ffdd00;}
+
+.canvas-wrapper{position:relative;z-index:1;}
+#gameCanvas{
+  border:2px solid rgba(255,51,102,0.3);
+  box-shadow:0 0 20px rgba(255,51,102,0.2),0 0 60px rgba(255,51,102,0.07),inset 0 0 50px rgba(0,0,0,0.9);
+  background:rgba(8,0,16,0.98);display:block;
+}
+#overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  background:rgba(8,0,16,0.9);backdrop-filter:blur(3px);transition:opacity 0.3s;z-index:10;
+}
+#overlay.hidden{opacity:0;pointer-events:none;}
+.overlay-title{font-size:clamp(11px,2.8vw,17px);color:var(--red);text-shadow:0 0 20px var(--red);text-align:center;line-height:2.2;}
+.overlay-sub{font-size:7px;color:rgba(255,51,102,0.75);text-align:center;line-height:2.8;}
+.btn{
+  font-family:'Press Start 2P',monospace;font-size:10px;padding:12px 28px;
+  background:transparent;color:var(--red);border:2px solid var(--red);cursor:pointer;
+  text-shadow:0 0 8px var(--red);box-shadow:0 0 12px rgba(255,51,102,0.3);
+  transition:all 0.15s;letter-spacing:2px;
+}
+.btn:hover{background:rgba(255,51,102,0.1);box-shadow:0 0 28px rgba(255,51,102,0.5);transform:scale(1.05)}
+.pause-btn{
+  position:relative;z-index:1;
+  font-family:'Press Start 2P',monospace;font-size:9px;
+  padding:8px 18px;background:transparent;
+  color:rgba(255,51,102,0.6);border:1px solid rgba(255,51,102,0.35);
+  cursor:pointer;letter-spacing:2px;transition:all 0.15s;border-radius:3px;
+}
+.pause-btn:hover{color:var(--red);border-color:var(--red);box-shadow:0 0 12px rgba(255,51,102,0.3);background:rgba(255,51,102,0.08);}
+.pause-btn.active{color:var(--gold);border-color:var(--gold);text-shadow:0 0 8px var(--gold);box-shadow:0 0 12px rgba(255,238,0,0.3);}
+
+/* Help modal */
+#helpModal{
+  display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(8,0,16,0.95);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;
+}
+#helpModal.open{display:flex;}
+#helpBox{
+  font-family:'Press Start 2P',monospace;
+  border:2px solid rgba(255,51,102,0.5);
+  box-shadow:0 0 40px rgba(255,51,102,0.3);
+  background:rgba(12,0,20,0.98);
+  padding:24px 28px;max-width:420px;width:90%;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  max-height:90vh;overflow-y:auto;
+}
+.hm-title{font-size:12px;color:var(--red);text-shadow:0 0 14px var(--red);letter-spacing:3px;text-align:center;}
+.hm-subtitle{font-size:6px;color:rgba(255,51,102,0.5);letter-spacing:2px;text-align:center;}
+.hm-grid{display:flex;flex-direction:column;gap:10px;width:100%;}
+.hm-item{
+  display:flex;align-items:flex-start;gap:12px;
+  border:1px solid rgba(255,51,102,0.18);
+  border-radius:4px;padding:10px 12px;
+  background:rgba(255,51,102,0.04);
+}
+.hm-item.hm-rare{
+  border-color:rgba(255,220,0,0.35);
+  background:rgba(255,220,0,0.04);
+  box-shadow:0 0 10px rgba(255,220,0,0.1);
+}
+.hm-icon{font-size:26px;line-height:1;min-width:30px;text-align:center;margin-top:2px;}
+.hm-info{display:flex;flex-direction:column;gap:5px;}
+.hm-name{font-size:7px;letter-spacing:1px;}
+.hm-desc{font-size:6px;color:rgba(255,255,255,0.4);line-height:2.2;letter-spacing:0.5px;}
+.score-flash{
+  position:absolute;font-size:7px;pointer-events:none;
+  color:var(--red);text-shadow:0 0 8px var(--red);
+  animation:scoreUp 0.9s ease-out forwards;z-index:5;
+}
+@keyframes scoreUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-40px);opacity:0}}
+#particles{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+.particle{position:absolute;top:-60px;font-size:22px;animation:pFall linear forwards;user-select:none}
+@keyframes pFall{
+  0%{transform:translateY(0) rotate(-15deg) scale(.6);opacity:0}
+  10%{opacity:1;transform:translateY(5vh) rotate(10deg) scale(1.1)}
+  50%{transform:translateY(50vh) rotate(-8deg) scale(1);opacity:1}
+  100%{transform:translateY(110vh) rotate(20deg) scale(.8);opacity:0}
+}
+.easter-banner{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  z-index:60;background:rgba(8,0,16,0.96);border:2px solid var(--red);
+  padding:20px 36px;text-align:center;pointer-events:none;
+  animation:bannerPop 2.8s ease forwards;box-shadow:0 0 40px rgba(255,51,102,0.5);
+}
+.easter-banner .bt{font-size:clamp(9px,2vw,13px);color:var(--red);text-shadow:0 0 14px var(--red);letter-spacing:3px;line-height:2}
+.easter-banner .bs{font-size:7px;color:rgba(255,150,150,.7);margin-top:6px;letter-spacing:2px}
+@keyframes bannerPop{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0}
+  15%{transform:translate(-50%,-50%) scale(1.1);opacity:1}
+  25%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  75%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(.8);opacity:0}
+}
+.mobile-controls{display:none;gap:12px;align-items:center;justify-content:center;}
+@media(max-width:600px){.mobile-controls{display:flex}}
+.mc-btn{
+  font-family:'Press Start 2P',monospace;font-size:11px;width:58px;height:58px;
+  background:rgba(255,51,102,0.07);color:var(--red);border:2px solid rgba(255,51,102,0.35);
+  border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;user-select:none;
+}
+.mc-btn:active{background:rgba(255,51,102,0.22);}
+</style>
+</head>
+<body>
+<div id="particles"></div>
+<h1>💔 ARKANOID DESAMOR 💔</h1>
+<div class="hud">
+  <div>DOLOR: <span id="scoreDisplay">0</span></div>
+  <div>RÉCORD: <span id="bestDisplay">0</span></div>
+  <div>FASE: <span id="levelDisplay">1</span></div>
+  <div class="lives-row">VIDAS:
+    <span class="life-heart" id="h1">💔</span>
+    <span class="life-heart" id="h2">💔</span>
+    <span class="life-heart" id="h3">💔</span>
+    <span class="life-heart" id="h4">💔</span>
+    <span class="life-heart" id="h5">💔</span>
+    <span class="life-heart" id="h6">💔</span>
+    <span class="life-heart" id="h7">💔</span>
+    <span class="life-heart lost" id="h8">💔</span>
+    <span class="life-heart lost" id="h9">💔</span>
+    <span class="life-heart lost" id="h10">💔</span>
+    <span class="life-heart lost" id="h11">💔</span>
+    <span class="life-heart lost" id="h12">💔</span>
+    <span class="life-heart lost" id="h13">💔</span>
+    <span class="life-heart lost" id="h14">💔</span>
+    <span class="life-heart lost" id="h15">💔</span>
+    <span class="life-heart lost" id="h16">💔</span>
+  </div>
+</div>
+<div class="powerup-bar" id="puBar"><!-- badges go here --></div>
+<div class="canvas-wrapper" id="cw">
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+  <div id="overlay">
+    <div class="overlay-title" id="overlayTitle">💔 ARKANOID<br>DESAMOR</div>
+    <div class="overlay-sub" id="overlaySub">
+      Rompe todos los recuerdos<br>
+      pero la pelota eres tú<br>
+      y no puedes escapar...
+    </div>
+    <button class="btn" id="startBtn">💔 SUFRIR</button>
+  </div>
+</div>
+<div class="mobile-controls">
+  <button class="mc-btn" id="mc-left">◀</button>
+  <button class="mc-btn" id="mc-launch">💔</button>
+  <button class="mc-btn" id="mc-right">▶</button>
+  <button class="mc-btn" id="mc-pause" style="font-size:9px">⏸</button>
+</div>
+<div style="position:relative;z-index:1;display:flex;gap:12px;align-items:center;justify-content:center;">
+  <button class="pause-btn" id="pauseBtn" style="display:none">⏸ PAUSA</button>
+  <button class="pause-btn" id="helpBtn">? AYUDA</button>
+</div>
+<div class="controls-hint">← → / MOUSE · ESPACIO = LANZAR · ESC = PAUSA</div>
+
+<!-- HELP MODAL -->
+<div id="helpModal">
+  <div id="helpBox">
+    <div class="hm-title">📖 GUÍA DE POWER-UPS</div>
+    <div class="hm-subtitle">Recógelos cuando caigan de los ladrillos</div>
+    <div class="hm-grid">
+      <div class="hm-item">
+        <span class="hm-icon">❤️</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#ff3366">+ VIDA</div>
+          <div class="hm-desc">Recuperas un corazón.<br>Máximo 14 vidas.</div>
+        </div>
+      </div>
+      <div class="hm-item">
+        <span class="hm-icon">↔️</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#00eeff">PALETA ANCHA</div>
+          <div class="hm-desc">Tu paleta crece un 70%.<br>Dura unos segundos.</div>
+        </div>
+      </div>
+      <div class="hm-item">
+        <span class="hm-icon">🐌</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#00ff88">BOLA LENTA</div>
+          <div class="hm-desc">La bola baja al 55%<br>de velocidad. La bola<br>se pone verde.</div>
+        </div>
+      </div>
+      <div class="hm-item">
+        <span class="hm-icon">✨</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#ffee00">BOLA EXTRA</div>
+          <div class="hm-desc">Aparecen 2 bolas<br>doradas adicionales<br>que también rompen.</div>
+        </div>
+      </div>
+      <div class="hm-item">
+        <span class="hm-icon">🌑</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#aa44ff">OSCURIDAD</div>
+          <div class="hm-desc">El campo se oscurece.<br>Solo ves el área<br>cerca de tu paleta.</div>
+        </div>
+      </div>
+      <div class="hm-item">
+        <span class="hm-icon">👻</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#ff8800">PARED FANTASMA</div>
+          <div class="hm-desc">30% de ladrillos se<br>vuelven transparentes.<br>La bola los atraviesa.</div>
+        </div>
+      </div>
+      <div class="hm-item hm-rare">
+        <span class="hm-icon">💥</span>
+        <div class="hm-info">
+          <div class="hm-name" style="color:#ffdd00">BOLA EXPLOSIVA ✦ RARO</div>
+          <div class="hm-desc">¡DESTRUYE TODOS los<br>ladrillos del nivel<br>de golpe! Muy raro.</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn" id="closeHelp" style="font-size:8px;padding:10px 22px;margin-top:8px">✕ CERRAR</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ── Brick messages ──
+const BRICK_MSGS = [
+  'te quería','lo nuestro','aquel día','sus ojos',
+  'ese beso','te extraño','por qué','lo siento',
+  'nunca más','te mentí','te fallé','sin ti',
+  'mi error','aún duele','te perdí','te amé',
+];
+
+const ROW_COLORS = ['#ff3366','#ff3366','#ff50a0','#ff50a0','#aa2244','#aa2244'];
+
+// ── Physics ──
+const PADDLE_H=11, PADDLE_W_BASE=140;
+const BALL_R=7, BALL_SPEED_BASE=3.8;
+const BRICK_COLS=8, BRICK_ROWS=6;
+const BRICK_W=44, BRICK_H=16, BRICK_GAP=4;
+const BRICK_OX=(W-(BRICK_COLS*(BRICK_W+BRICK_GAP)-BRICK_GAP))/2;
+const BRICK_OY=48;
+
+// ── Power-up definitions ──
+// Types: 'heart'(+vida), 'wide'(paleta ancha), 'slow'(pelota lenta),
+//        'multi'(bola extra), 'dark'(fondo oscuro+niebla), 'ghost'(ladrillo fantasma)
+const PU_DEFS = {
+  heart:   { emoji:'❤️',  color:'#ff3366', label:'+ VIDA',         dur:0    },
+  wide:    { emoji:'↔️',  color:'#00eeff', label:'PALETA ANCHA',   dur:600  },
+  slow:    { emoji:'🐌',  color:'#00ff88', label:'BOLA LENTA',     dur:500  },
+  multi:   { emoji:'✨',  color:'#ffee00', label:'BOLA EXTRA',     dur:0    },
+  dark:    { emoji:'🌑',  color:'#aa44ff', label:'OSCURIDAD',      dur:400  },
+  ghost:   { emoji:'👻',  color:'#ff8800', label:'PARED FANTASMA', dur:350  },
+  bomba:   { emoji:'💥',  color:'#ffdd00', label:'BOLA EXPLOSIVA',  dur:0    },
+};
+// drop chance per brick destroy (0-1)
+const PU_CHANCE = 0.50;
+const PU_TYPES  = ['heart','wide','slow','multi','dark','ghost','bomba'];
+const PU_WEIGHTS=[  8,      18,    18,    12,     12,    12,     2  ]; // bomba = ultra raro
+
+let score=0, best=0, lives=3, level=1;
+let running=false, paused=false, gameOverFlag=false;
+let animId=null, bricks=[], milestones=new Set();
+let mouseX=W/2, bricksDestroyed=0;
+const keys={};
+
+// Active effects (remaining frames)
+let effects={wide:0, slow:0, dark:0, ghost:0};
+// Extra balls
+let extraBalls=[];
+// Falling power-ups
+let drops=[];
+
+let paddle={x:W/2-40, y:H-32, w:PADDLE_W_BASE, h:PADDLE_H};
+let ball={x:0,y:0,vx:0,vy:0,attached:true};
+
+// ── Level configs ──
+// rows, cols, hitsPerRow, puChance, speedMult, extraLives(given at level start)
+const LEVEL_CONFIGS = [
+  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.60, speedMult:0.72, bonus:1, label:'EL PRIMER GOLPE'        }, // 1
+  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.65, speedMult:0.68, bonus:1, label:'AÚN NO DUELE'           }, // 2
+  { rows:4, cols:7, hits:[1,1,1,1],            pu:0.68, speedMult:0.51, bonus:1, label:'EMPIEZA A ARDER'        }, // 3 ↓ 0.51
+  { rows:4, cols:8, hits:[1,1,1,1],            pu:0.67, speedMult:0.53, bonus:1, label:'LAS HERIDAS ABIERTAS'   }, // 4 ↓ 0.53
+  { rows:5, cols:8, hits:[1,1,1,1,1],          pu:0.63, speedMult:0.55, bonus:1, label:'ALGO SE ROMPE'          }, // 5 ↓ 0.55
+  { rows:5, cols:8, hits:[1,1,1,1,1],          pu:0.62, speedMult:0.57, bonus:1, label:'NO PUEDES PARAR'        }, // 6 ↓ 0.57
+  { rows:5, cols:8, hits:[2,1,1,1,1],          pu:0.55, speedMult:0.58, bonus:0, label:'ADICTO AL SUFRIMIENTO'  }, // 7 ↓ 0.58
+  { rows:6, cols:8, hits:[2,1,1,1,1,1],        pu:0.50, speedMult:0.59, bonus:0, label:'SIN SALIDA'             }, // 8 ↓ 0.59
+  { rows:6, cols:8, hits:[2,2,1,1,1,1],        pu:0.46, speedMult:0.60, bonus:0, label:'TE LO BUSCASTE'         }, // 9 ↓ 0.60
+  { rows:6, cols:8, hits:[2,2,2,1,1,1],        pu:0.44, speedMult:0.61, bonus:0, label:'IRREPARABLE'            }, // 10 ↓ 0.61
+];
+function getLevelCfg(){ return LEVEL_CONFIGS[Math.min(level-1, LEVEL_CONFIGS.length-1)]; }
+
+// ── Init ──
+function initBricks(){
+  bricks=[];
+  const cfg=getLevelCfg();
+  const cols=cfg.cols;
+  const bw=Math.floor((W-20) / cols) - 4;
+  const ox=(W-(cols*(bw+BRICK_GAP)-BRICK_GAP))/2;
+  const msgs=[...BRICK_MSGS].sort(()=>Math.random()-0.5);
+  let mi=0;
+  for(let r=0;r<cfg.rows;r++)
+    for(let c=0;c<cols;c++){
+      const hits=cfg.hits[r]||1;
+      bricks.push({
+        x:ox+c*(bw+BRICK_GAP), y:BRICK_OY+r*(BRICK_H+BRICK_GAP),
+        w:bw, h:BRICK_H, alive:true, hits, maxHits:hits,
+        color:ROW_COLORS[r % ROW_COLORS.length],
+        msg:msgs[mi++%msgs.length],
+        ghost:false,
+      });
+    }
+}
+
+function resetBall(){
+  ball.x=paddle.x+paddle.w/2; ball.y=paddle.y-BALL_R-2;
+  ball.vx=0; ball.vy=0; ball.attached=true;
+}
+
+function initGame(){
+  score=0; lives=9; level=1; milestones=new Set(); bricksDestroyed=0;
+  effects={wide:0,slow:0,dark:0,ghost:0};
+  extraBalls=[]; drops=[];
+  paddle.w=PADDLE_W_BASE; paddle.x=W/2-paddle.w/2;
+  initBricks(); resetBall(); updateHUD(); updateHearts(); updatePuBar();
+}
+
+function getSpeed(){
+  const cfg = getLevelCfg();
+  const totalBricks = bricks.length || 1;
+  // Ramp from speedMult * 0.75 at start to speedMult * 1.0 at end of level
+  const progress = Math.min(1, bricksDestroyed / totalBricks);
+  const ramp = 0.45 + 0.55 * progress;
+  const base = BALL_SPEED_BASE * cfg.speedMult * ramp;
+  return effects.slow>0 ? base*0.55 : base;
+}
+
+function launchBall(){
+  if(!ball.attached) return;
+  ball.attached=false;
+  const angle=-Math.PI/2+(Math.random()-0.5)*Math.PI/3;
+  const sp=getSpeed();
+  ball.vx=Math.cos(angle)*sp; ball.vy=Math.sin(angle)*sp;
+}
+
+function start(){
+  initGame();
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('pauseBtn').style.display='inline-block';
+  running=true; gameOverFlag=false; paused=false;
+  cancelAnimationFrame(animId); loop();
+}
+
+function loop(){if(!running)return; update(); draw(); animId=requestAnimationFrame(loop);}
+
+// ── Update ──
+function update(){
+  if(paused||gameOverFlag) return;
+
+  // Tick effects
+  for(const k in effects) if(effects[k]>0){ effects[k]--; if(effects[k]===0) onEffectEnd(k); }
+
+  // Paddle width
+  const targetW = effects.wide>0 ? PADDLE_W_BASE*1.7 : PADDLE_W_BASE;
+  paddle.w += (targetW-paddle.w)*0.12;
+
+  // Paddle move
+  paddle.x=mouseX-paddle.w/2;
+  paddle.x=Math.max(0,Math.min(W-paddle.w,paddle.x));
+
+  // Main ball
+  if(ball.attached){
+    ball.x=paddle.x+paddle.w/2; ball.y=paddle.y-BALL_R-2;
+  } else {
+    moveBall(ball, true);
+  }
+
+  // Extra balls
+  for(let i=extraBalls.length-1;i>=0;i--){
+    const eb=extraBalls[i];
+    moveBall(eb, false);
+    if(eb.dead) extraBalls.splice(i,1);
+  }
+
+  // Falling drops
+  for(let i=drops.length-1;i>=0;i--){
+    const d=drops[i];
+    d.y+=1.4;
+    // Catch with paddle
+    if(d.y+10>=paddle.y && d.y<=paddle.y+paddle.h && d.x>=paddle.x && d.x<=paddle.x+paddle.w){
+      applyPowerup(d.type);
+      drops.splice(i,1); continue;
+    }
+    if(d.y>H+20) drops.splice(i,1);
+  }
+}
+
+function moveBall(b, isMain){
+  const spd=getSpeed();
+  // Normalize speed
+  const cur=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+  if(cur>0.1){b.vx=(b.vx/cur)*spd; b.vy=(b.vy/cur)*spd;}
+
+  b.x+=b.vx; b.y+=b.vy;
+
+  // Walls
+  if(b.x-BALL_R<0){b.x=BALL_R; b.vx=Math.abs(b.vx);}
+  if(b.x+BALL_R>W){b.x=W-BALL_R; b.vx=-Math.abs(b.vx);}
+  if(b.y-BALL_R<0){b.y=BALL_R; b.vy=Math.abs(b.vy);}
+
+  // Ghost wall effect: right wall becomes passable
+  if(effects.ghost>0 && b.x+BALL_R>W){ b.x=BALL_R; } // teleport left
+
+  // Paddle
+  if(b.vy>0 && b.y+BALL_R>=paddle.y && b.y+BALL_R<=paddle.y+paddle.h
+     && b.x>=paddle.x && b.x<=paddle.x+paddle.w){
+    b.vy=-Math.abs(b.vy);
+    const hit=(b.x-(paddle.x+paddle.w/2))/(paddle.w/2);
+    b.vx=hit*spd*1.3;
+    const s=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+    b.vx=(b.vx/s)*spd; b.vy=(b.vy/s)*spd;
+    b.y=paddle.y-BALL_R-1;
+  }
+
+  // Lost
+  if(b.y-BALL_R>H){
+    if(isMain){ loseLife(); }
+    else { b.dead=true; }
+    return;
+  }
+
+  // Bricks
+  for(const br of bricks){
+    if(!br.alive) continue;
+    if(br.ghost) continue; // ghost bricks: ball passes through visually
+    if(b.x+BALL_R>br.x && b.x-BALL_R<br.x+br.w &&
+       b.y+BALL_R>br.y && b.y-BALL_R<br.y+br.h){
+      br.hits--;
+      if(br.hits<=0){
+        br.alive=false;
+        bricksDestroyed++;
+        const pts=10*level;
+        score+=pts; if(score>best) best=score;
+        showScoreFlash(br.x+br.w/2, br.y, br.msg);
+        checkMilestone(score); updateHUD();
+        maybeDrop(br.x+br.w/2, br.y+br.h/2);
+      }
+      const oL=b.x+BALL_R-br.x, oR=br.x+br.w-(b.x-BALL_R);
+      const oT=b.y+BALL_R-br.y, oB=br.y+br.h-(b.y-BALL_R);
+      if(Math.min(oL,oR)<Math.min(oT,oB)) b.vx=-b.vx;
+      else b.vy=-b.vy;
+      if(bricks.every(b=>!b.alive)){ nextLevel(); return; }
+      break;
+    }
+  }
+}
+
+// ── Power-ups ──
+function weightedRandom(weights){
+  const total=weights.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total;
+  for(let i=0;i<weights.length;i++){r-=weights[i];if(r<0)return i;}
+  return 0;
+}
+
+function maybeDrop(x,y){
+  if(Math.random()>getLevelCfg().pu) return;
+  const idx=weightedRandom(PU_WEIGHTS);
+  drops.push({x, y, type:PU_TYPES[idx], angle:0});
+}
+
+function applyPowerup(type){
+  const def=PU_DEFS[type];
+  showPuAnnounce(type);
+  switch(type){
+    case 'heart':
+      if(lives<14){ lives++; updateHearts(); }
+      break;
+    case 'wide':
+      effects.wide=def.dur;
+      break;
+    case 'slow':
+      effects.slow=def.dur;
+      break;
+    case 'multi':
+      // Spawn 2 extra balls from current ball position
+      for(let i=0;i<2;i++){
+        const angle=-Math.PI/2+(Math.random()-0.5)*Math.PI;
+        const sp=getSpeed();
+        extraBalls.push({
+          x:ball.x, y:ball.y,
+          vx:Math.cos(angle)*sp, vy:Math.sin(angle)*sp,
+          dead:false,
+        });
+      }
+      break;
+    case 'dark':
+      effects.dark=def.dur;
+      break;
+    case 'ghost':
+      effects.ghost=def.dur;
+      // Make 30% of alive bricks ghost (passable) temporarily
+      bricks.filter(b=>b.alive).forEach(b=>{ if(Math.random()<0.3) b.ghost=true; });
+      break;
+    case 'bomba':
+      // Destroys ALL alive bricks instantly with a shockwave
+      triggerExplosion();
+      let bombaScore = 0;
+      bricks.forEach(b=>{ if(b.alive){ b.alive=false; bombaScore+=10*level; } });
+      score+=bombaScore; if(score>best) best=score;
+      updateHUD();
+      setTimeout(()=>{ if(bricks.every(b=>!b.alive)) nextLevel(); }, 600);
+      break;
+  }
+  updatePuBar();
+}
+
+function onEffectEnd(k){
+  if(k==='ghost'){
+    bricks.forEach(b=>b.ghost=false);
+  }
+  updatePuBar();
+}
+
+function showPuAnnounce(type){
+  const def=PU_DEFS[type];
+  const el=document.createElement('div');
+  el.className='score-flash';
+  el.style.color=def.color;
+  el.style.textShadow=`0 0 8px ${def.color}`;
+  el.style.fontSize='8px';
+  el.style.left='50%'; el.style.top='55%';
+  el.style.transform='translateX(-50%)';
+  el.textContent=def.emoji+' '+def.label;
+  document.getElementById('cw').appendChild(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+
+function updatePuBar(){
+  const bar=document.getElementById('puBar');
+  bar.innerHTML='';
+  const active=Object.entries(effects).filter(([k,v])=>v>0);
+  if(active.length===0){bar.innerHTML='<span style="font-size:7px;opacity:0.3">SIN MEJORAS</span>';return;}
+  active.forEach(([k])=>{
+    const d=PU_DEFS[k];
+    const badge=document.createElement('span');
+    badge.className='pu-badge '+k;
+    badge.textContent=d.emoji+' '+d.label;
+    bar.appendChild(badge);
+  });
+}
+
+// ── Lives / Game flow ──
+function loseLife(){
+  lives--; updateHearts();
+  if(lives<=0){ endGame(); return; }
+  resetBall(); extraBalls=[];
+}
+
+function nextLevel(){
+  level++; effects={wide:0,slow:0,dark:0,ghost:0};
+  drops=[]; extraBalls=[]; bricksDestroyed=0;
+  const cfg=getLevelCfg();
+  // Bonus lives on certain levels
+  if(cfg.bonus>0){
+    lives=Math.min(14, lives+cfg.bonus);
+    updateHearts();
+  }
+  initBricks(); resetBall(); updateHUD(); updatePuBar();
+  const totalLevels=LEVEL_CONFIGS.length;
+  const isLast=(level>totalLevels);
+  const sub = cfg.bonus>0
+    ? `+${cfg.bonus} CORAZÓN porque aún no has sufrido suficiente...<br><br>${cfg.label}`
+    : `Más recuerdos que romper...<br>${cfg.label}`;
+  showOverlay(
+    isLast ? '😭 FASE FINAL' : `😭 FASE ${level} / ${totalLevels}`,
+    sub,
+    '💔 SEGUIR SUFRIENDO'
+  );
+  paused=true;
+}
+
+function endGame(){
+  gameOverFlag=true; running=false; cancelAnimationFrame(animId);
+  if(score>best) best=score;
+  let fl=0;
+  const iv=setInterval(()=>{
+    ctx.fillStyle=fl%2===0?'rgba(255,51,102,0.18)':'transparent';
+    ctx.fillRect(0,0,W,H); fl++;
+    if(fl>=8){clearInterval(iv);showOverlay('💔 TE ROMPISTE','DOLOR: '+score+'<br>RÉCORD: '+best,'↩ VOLVER A SUFRIR');}
+  },110);
+}
+
+function showOverlay(t,s,b){
+  document.getElementById('overlayTitle').innerHTML=t;
+  document.getElementById('overlaySub').innerHTML=s;
+  document.getElementById('startBtn').textContent=b;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+// ── Draw ──
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  // Dark mode: fog overlay
+  if(effects.dark>0){
+    const fade=Math.min(1,effects.dark/60);
+    const fog=ctx.createRadialGradient(paddle.x+paddle.w/2,paddle.y,30,W/2,H/2,W*0.7);
+    fog.addColorStop(0,`rgba(8,0,16,0)`);
+    fog.addColorStop(0.35,`rgba(8,0,16,${0.55*fade})`);
+    fog.addColorStop(1,`rgba(8,0,16,${0.92*fade})`);
+    ctx.fillStyle=fog; ctx.fillRect(0,0,W,H);
+  }
+
+  // BG dots
+  ctx.fillStyle='rgba(255,51,102,0.022)';
+  for(let x=0;x<W;x+=20) for(let y=0;y<H;y+=20) ctx.fillRect(x+9,y+9,2,2);
+
+  // Ghost effect: orange shimmer on screen edge
+  if(effects.ghost>0){
+    ctx.save();
+    ctx.strokeStyle=`rgba(255,136,0,${Math.min(0.5,effects.ghost/100)})`;
+    ctx.lineWidth=6;
+    ctx.strokeRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  // Bricks
+  bricks.forEach(b=>{
+    if(!b.alive) return;
+    const dim=b.hits<b.maxHits?0.45:1;
+    const isGhost=b.ghost;
+    ctx.save();
+    ctx.globalAlpha=isGhost?0.25:1;
+    ctx.shadowBlur=isGhost?4:10*dim; ctx.shadowColor=b.color;
+    ctx.fillStyle=hexAlpha(b.color,0.15*dim);
+    roundRect(ctx,b.x,b.y,b.w,b.h,3); ctx.fill();
+    ctx.strokeStyle=hexAlpha(b.color,0.85*dim);
+    ctx.lineWidth=1.5; ctx.stroke();
+    if(b.hits<b.maxHits){
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(b.x+b.w*0.3,b.y+2);ctx.lineTo(b.x+b.w*0.5,b.y+b.h*0.6);ctx.lineTo(b.x+b.w*0.72,b.y+b.h-2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    ctx.fillStyle=`rgba(255,255,255,${0.5*dim})`;
+    ctx.font="4px 'Press Start 2P'";
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(b.msg,b.x+b.w/2,b.y+b.h/2);
+    ctx.restore();
+  });
+
+  // Falling power-up drops
+  drops.forEach(d=>{
+    const def=PU_DEFS[d.type];
+    d.angle+=0.05;
+    ctx.save();
+    ctx.translate(d.x,d.y);
+    ctx.rotate(Math.sin(d.angle)*0.3);
+    ctx.shadowBlur=14; ctx.shadowColor=def.color;
+    // Capsule bg
+    ctx.fillStyle=hexAlpha(def.color,0.15);
+    ctx.strokeStyle=def.color; ctx.lineWidth=1.5;
+    roundRect(ctx,-18,-11,36,22,5); ctx.fill(); ctx.stroke();
+    // Emoji
+    ctx.font='14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(def.emoji,0,0);
+    ctx.restore();
+  });
+
+  // Paddle
+  ctx.save();
+  const pw=effects.wide>0;
+  ctx.shadowBlur=pw?24:16;
+  ctx.shadowColor=pw?'#00eeff':'#ff3366';
+  ctx.fillStyle=pw?'rgba(0,238,255,0.12)':'rgba(255,51,102,0.12)';
+  roundRect(ctx,paddle.x,paddle.y,paddle.w,paddle.h,5); ctx.fill();
+  ctx.strokeStyle=pw?'rgba(0,238,255,0.9)':'rgba(255,51,102,0.9)';
+  ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle=pw?'rgba(0,238,255,0.07)':'rgba(255,255,255,0.07)';
+  roundRect(ctx,paddle.x+4,paddle.y+2,paddle.w-8,3,2); ctx.fill();
+  ctx.restore();
+
+  // Draw ball fn
+  function drawOneBall(bx, by, col, slow){
+    const pulse=0.8+0.2*Math.sin(Date.now()/130);
+    ctx.save();
+    ctx.shadowBlur=24*pulse; ctx.shadowColor=col||'#ff3366';
+    ctx.fillStyle=col||'#ff3366';
+    ctx.beginPath(); ctx.arc(bx,by,BALL_R,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(255,200,210,0.85)';
+    ctx.beginPath(); ctx.arc(bx-2,by-2,BALL_R*0.38,0,Math.PI*2); ctx.fill();
+    if(slow){
+      // Slow ring
+      ctx.strokeStyle='rgba(0,255,136,0.4)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(bx,by,BALL_R+4,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Main ball
+  if(!ball.attached || true){
+    const isSlow=effects.slow>0;
+    drawOneBall(ball.x,ball.y,isSlow?'#00ff88':'#ff3366', isSlow);
+  }
+  // Extra balls (gold)
+  extraBalls.forEach(eb=>drawOneBall(eb.x,eb.y,'#ffee00',false));
+
+  // Guide line when attached
+  if(ball.attached){
+    ctx.save(); ctx.strokeStyle='rgba(255,51,102,0.15)'; ctx.setLineDash([4,6]);
+    ctx.beginPath(); ctx.moveTo(ball.x,ball.y); ctx.lineTo(ball.x,ball.y-70); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── Utils ──
+function hexAlpha(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+function updateHUD(){
+  document.getElementById('scoreDisplay').textContent=score;
+  document.getElementById('bestDisplay').textContent=best;
+  document.getElementById('levelDisplay').textContent=level;
+}
+function updateHearts(){
+  for(let i=1;i<=14;i++){
+    const el=document.getElementById('h'+i);
+    if(el) el.className='life-heart'+(i>lives?' lost':'');
+  }
+}
+function showScoreFlash(x,y,msg){
+  const el=document.createElement('div');
+  el.className='score-flash'; el.textContent='"'+msg+'"';
+  el.style.left=x-40+'px'; el.style.top=y+'px';
+  document.getElementById('cw').appendChild(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+
+// ── Milestones ──
+const MILESTONE_LIST=[
+  {score:100,  emoji:'💔', title:'CADA LADRILLO DUELE',    sub:'100 DE DOLOR · COMO ESPERABAS',                  lives:0},
+  {score:300,  emoji:'🥀', title:'NO PUEDES PARAR',         sub:'300 DE DOLOR · ADICTO AL SUFRIMIENTO',           lives:0},
+  {score:600,  emoji:'😭', title:'TE ESTÁS DESTRUYENDO',    sub:'600 DE DOLOR · ESTO ERA EVITABLE',               lives:0},
+  {score:1000, emoji:'🖤', title:'IRREPARABLE',              sub:'1000 DE DOLOR · YA NO HAY VUELTA ATRÁS · +2❤',  lives:2},
+  {score:1500, emoji:'🌧️', title:'LLOVIENDO POR DENTRO',   sub:'1500 DE DOLOR · NI EL TIEMPO LO CURA · +1❤',    lives:1},
+  {score:2200, emoji:'🔥', title:'TE QUEMAS SOLO',          sub:'2200 DE DOLOR · Y SIGUES VOLVIENDO · +1❤',      lives:1},
+  {score:3000, emoji:'😶', title:'YA NI SIENTES NADA',      sub:'3000 DE DOLOR · EL PEOR ESTADO · +1❤',          lives:1},
+  {score:4000, emoji:'💀', title:'MUERTO POR DENTRO',       sub:'4000 DE DOLOR · FELICIDADES SUPONGO · +1❤',     lives:1},
+  {score:5500, emoji:'👁️', title:'EL DESAMOR TE VE',        sub:'5500 DE DOLOR · Y TÚ AÚN JUEGAS · +1❤',         lives:1},
+  {score:7000, emoji:'🌀', title:'ATRAPADO PARA SIEMPRE',   sub:'7000 DE DOLOR · NO HAY ESCAPE · +1❤',           lives:1},
+  {score:9000, emoji:'🕯️', title:'LA ÚLTIMA LLAMA',         sub:'9000 DE DOLOR · CASI EXTINGUIDO · +1❤',         lives:1},
+  {score:12000,emoji:'🫀', title:'LATE PERO NO SIENTE',     sub:'12000 DE DOLOR · SOLO MECÁNICA · +1❤',          lives:1},
+  {score:16000,emoji:'🌌', title:'PERDIDO EN EL VACÍO',     sub:'16000 DE DOLOR · ¿SIGUES AHÍ? · +2❤',           lives:2},
+  {score:21000,emoji:'♾️', title:'EL DOLOR ETERNO',         sub:'21000 DE DOLOR · ERES EL DESAMOR · +2❤',        lives:2},
+];
+function checkMilestone(s){
+  for(const m of MILESTONE_LIST)
+    if(s>=m.score&&!milestones.has(m.score)){
+      milestones.add(m.score);
+      if(m.lives>0){
+        lives=Math.min(14, lives+m.lives);
+        updateHearts();
+      }
+      const b=document.createElement('div'); b.className='easter-banner';
+      b.innerHTML=`<div class="bt">${m.emoji} ${m.title} ${m.emoji}</div><div class="bs">${m.sub}</div>`;
+      document.body.appendChild(b); b.addEventListener('animationend',()=>b.remove());
+    }
+}
+function triggerExplosion(){
+  // Flash the whole canvas gold 3 times, then shoot particles from center
+  const cw = document.getElementById('cw');
+  let fl=0;
+  const iv=setInterval(()=>{
+    ctx.save();
+    ctx.fillStyle=`rgba(255,220,0,${fl%2===0?0.35:0})`;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+    fl++;
+    if(fl>=6) clearInterval(iv);
+  }, 80);
+  // Shockwave ring drawn on canvas
+  let radius=10, maxR=Math.max(W,H)*0.85;
+  const shockId=setInterval(()=>{
+    ctx.save();
+    ctx.strokeStyle=`rgba(255,220,0,${1-radius/maxR})`;
+    ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(W/2,H/2,radius,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+    radius+=18;
+    if(radius>maxR) clearInterval(shockId);
+  }, 16);
+  // Particle burst
+  const container=document.getElementById('particles');
+  const em=['💥','⭐','✨','💫','🔥','💛'];
+  for(let i=0;i<30;i++) setTimeout(()=>{
+    const el=document.createElement('div'); el.className='particle';
+    el.textContent=em[Math.floor(Math.random()*em.length)];
+    el.style.left=Math.random()*100+'vw';
+    el.style.fontSize=(18+Math.random()*18)+'px';
+    el.style.animationDuration=(1.2+Math.random()*1.5)+'s';
+    container.appendChild(el); el.addEventListener('animationend',()=>el.remove());
+  }, i*40);
+}
+
+function triggerCelebration(){
+  const c=document.getElementById('particles');
+  const em=['💔','🥀','😭','🖤','💌','😢','🌧️','🔥'];
+  for(let i=0;i<26;i++) setTimeout(()=>{
+    const el=document.createElement('div'); el.className='particle';
+    el.textContent=em[Math.floor(Math.random()*em.length)];
+    el.style.left=Math.random()*100+'vw';
+    el.style.fontSize=(16+Math.random()*16)+'px';
+    el.style.animationDuration=(2+Math.random()*2)+'s';
+    c.appendChild(el); el.addEventListener('animationend',()=>el.remove());
+  },i*65);
+}
+
+// ── Input ──
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if([' ','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  if(e.key===' '){
+    if(!running) return;
+    if(paused){ togglePause(); }
+    else if(ball.attached) launchBall();
+    else togglePause();
+  }
+  if(e.key==='Escape'&&running&&!gameOverFlag) togglePause();
+});
+document.addEventListener('keyup',e=>keys[e.key]=false);
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect(); mouseX=(e.clientX-r.left)*(W/r.width);
+});
+canvas.addEventListener('touchmove',e=>{
+  const r=canvas.getBoundingClientRect(); mouseX=(e.touches[0].clientX-r.left)*(W/r.width);
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('click',()=>{if(running&&!paused&&ball.attached)launchBall();});
+
+['mc-left','mc-right','mc-launch'].forEach(id=>{
+  const btn=document.getElementById(id);
+  const mk=id==='mc-left'?'ArrowLeft':id==='mc-right'?'ArrowRight':' ';
+  btn.addEventListener('touchstart',e=>{keys[mk]=true;e.preventDefault();},{passive:false});
+  btn.addEventListener('touchend',  e=>{keys[mk]=false;e.preventDefault();},{passive:false});
+  btn.addEventListener('mousedown',()=>keys[mk]=true);
+  btn.addEventListener('mouseup',  ()=>keys[mk]=false);
+});
+document.getElementById('mc-pause').addEventListener('click', togglePause);
+document.getElementById('helpBtn').addEventListener('click',()=>{
+  document.getElementById('helpModal').classList.add('open');
+});
+document.getElementById('closeHelp').addEventListener('click',()=>{
+  document.getElementById('helpModal').classList.remove('open');
+});
+document.getElementById('helpModal').addEventListener('click',(e)=>{
+  if(e.target===document.getElementById('helpModal'))
+    document.getElementById('helpModal').classList.remove('open');
+});
+
+function togglePause(){
+  if(!running||gameOverFlag) return;
+  paused=!paused;
+  const btn=document.getElementById('pauseBtn');
+  if(paused){
+    btn.textContent='▶ CONTINUAR'; btn.classList.add('active');
+    showOverlay('⏸ PAUSA','Descansando del dolor...','▶ CONTINUAR');
+  } else {
+    btn.textContent='⏸ PAUSA'; btn.classList.remove('active');
+    document.getElementById('overlay').classList.add('hidden');
+    loop();
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click',()=>{
+  if(paused){ togglePause(); }
+  else start();
+});
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+
+// Idle
+function idleDraw(){
+  if(!running){
+    ctx.clearRect(0,0,W,H);
+    const t=Date.now()/1000;
+    for(let i=0;i<5;i++){
+      const x=(Math.sin(t*0.6+i*1.4)*0.4+0.5)*W;
+      const y=(Math.cos(t*0.45+i*2.0)*0.4+0.5)*H;
+      ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#ff3366';
+      ctx.globalAlpha=0.1+i*0.04;
+      ctx.fillStyle='#ff3366'; ctx.beginPath(); ctx.arc(x,y,4+i*3,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    requestAnimationFrame(idleDraw);
+  }
+}
+idleDraw();
+</script>
+</body>
+</html>
