@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>La Palabra Rota 💔</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #4b0082, #000);
+            color: white;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-top: 20px;
+            font-size: 2.5rem;
+        }
+
+        .game-box {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(255, 0, 100, 0.5);
+        }
+
+        .word {
+            font-size: 2rem;
+            letter-spacing: 10px;
+            margin: 20px 0;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 18px;
+            border-radius: 10px;
+            border: none;
+            width: 60px;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #ff004f;
+            color: white;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        button:hover {
+            background: #ff6a00;
+        }
+
+        .stats {
+            margin-top: 15px;
+        }
+
+        .logros {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .logros {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .logros {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 14px;
+            background: black;
+            color: #33ff33;
+            border: 1px solid #33ff33;
+            padding: 10px;
+            font-family: "Courier New", monospace;
+            text-shadow: 0 0 5px #33ff33;
+            max-height: 150px;
+            overflow-y: auto;
+}
+    </style>
+</head>
+
+<body>
+
+    <h1>💔 La Palabra Rota 173 💔</h1>
+
+    <div class="game-box">
+        <div class="word" id="wordDisplay"></div>
+
+        <input type="text" id="letterInput" maxlength="1">
+        <button onclick="guessLetter()">Intentar</button>
+
+        <div class="stats">
+            ❤️ Intentos restantes: <span id="tries"></span><br>
+            💔 Puntuación Desamor: <span id="score">0</span>
+        </div>
+
+        <div class="logros">
+            <h3>🏆 Logros</h3>
+            <ul id="achievements"></ul>
+        </div>
+    </div>
+
+    <script>
+
+        const words = [
+                "OLVIDO",
+                "TRAICION",
+                "DESAMOR",
+                "SOLEDAD",
+                "MENTIRA",
+                "ADIOS",
+                "RUPTURA",
+
+                // Nivel medio
+                "DESENGANO",
+                "DESILUSION",
+                "DESCONSUELO",
+                "INDIFERENCIA",
+                "ABANDONO",
+                "NOSTALGIA",
+                "DESPRECIO",
+                "FRIALDAD",
+                "AUSENCIA",
+                "INCOMPRENSION",
+
+                // Nivel avanzado
+                "DESAFECTO",
+                "INFAUSTO",
+                "INEXORABLE",
+                "LACERANTE",
+                "INSALVABLE",
+                "IRREVERSIBLE",
+                "DESVINCULACION",
+                "DESCONEXION",
+                "INCONSOLABLE",
+                "DESAMPARO",
+
+                // Nivel experto emocional
+                "INEFABLE",
+                "IRREMEDIABLE",
+                "ANACRONISMO",
+                "ENTROPIA",
+                "MELANCOLIA",
+                "DESPERSONALIZACION",
+                "INTRASCENDENCIA",
+                "EXANIME",
+                "AFONIA",
+                "DISOCIACION",
+                "ABULIA",
+                "LIMERENCIA",
+                "OBLITERACION",
+                "DESINTEGRACION",
+                "INCONMENSURABLE",
+                "INSONDABLE"
+            ];
+
+        let selectedWord;
+        let hiddenWord;
+        let tries;
+        let score = 0;
+        let achievementsUnlocked = [];
+
+        let wins = 0;
+        let losses = 0;
+        let streak = 0;
+        let maxStreak = 0;
+        let totalAttempts = 0;
+        let correctLetters = 0;
+        let wrongLetters = 0;
+
+        function newGame() {
+            selectedWord = words[Math.floor(Math.random() * words.length)];
+            hiddenWord = "_".repeat(selectedWord.length).split("");
+            tries = 8;
+            document.getElementById("tries").innerText = tries;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById("wordDisplay").innerText = hiddenWord.join(" ");
+            document.getElementById("score").innerText = score;
+        }
+
+        function guessLetter() {
+            const input = document.getElementById("letterInput");
+            const letter = input.value.toUpperCase();
+            input.value = "";
+
+            if (!letter.match(/[A-ZÑ]/)) return;
+
+            let found = false;
+
+            for (let i = 0; i < selectedWord.length; i++) {
+                if (selectedWord[i] === letter) {
+                    hiddenWord[i] = letter;
+                    found = true;
+                }
+            }
+
+            totalAttempts++;
+
+            if (!found) {
+                tries--;
+                wrongLetters++;
+                document.getElementById("tries").innerText = tries;
+            } else {
+                score += 10;
+                correctLetters++;
+            }
+
+            updateDisplay();
+            checkGame();
+        }
+
+    function checkGame() {
+
+        if (hiddenWord.join("") === selectedWord) {
+            score += 50;
+            wins++;
+            streak++;
+            if (streak > maxStreak) maxStreak = streak;
+
+            unlockAchievement("Superaste un recuerdo 💔");
+            newGame();
+        }
+
+        else if (tries <= 0) {
+            score -= 20;
+            losses++;
+            streak = 0;
+
+            unlockAchievement("El desamor te vencio 😢");
+            newGame();
+        }
+
+        checkAchievements();
+    }
+
+        function unlockAchievement(text) {
+            if (!achievementsUnlocked.includes(text)) {
+                achievementsUnlocked.push(text);
+                const li = document.createElement("li");
+                li.innerText = text;
+                document.getElementById("achievements").appendChild(li);
+            }
+        }
+
+        function checkAchievements() {
+
+                // Puntuación
+                if (score >= 50)
+                    unlockAchievement("Todavía duele.");
+
+                if (score >= 100)
+                    unlockAchievement("Empiezas a entender el silencio.");
+
+                if (score >= 200)
+                    unlockAchievement("Aceptación forzada.");
+
+                if (score >= 300)
+                    unlockAchievement("Ya no esperas mensajes.");
+
+                if (score >= 500)
+                    unlockAchievement("Has dejado de revisar su perfil.");
+
+                if (score >= 800)
+                    unlockAchievement("El recuerdo ya no quema.");
+
+                // Victorias
+                if (wins >= 3)
+                    unlockAchievement("Aprendiste algo tarde.");
+
+                if (wins >= 7)
+                    unlockAchievement("Hablas menos. Piensas más.");
+
+                if (wins >= 15)
+                    unlockAchievement("Sobreviviste a ti mismo.");
+
+                // Derrotas
+                if (losses >= 3)
+                    unlockAchievement("Siempre fue mi culpa, ¿verdad?");
+
+                if (losses >= 7)
+                    unlockAchievement("Te acostumbraste al fracaso.");
+
+                if (losses >= 15)
+                    unlockAchievement("Ya no duele perder.");
+
+                // Racha
+                if (maxStreak >= 3)
+                    unlockAchievement("Tres recuerdos superados.");
+
+                if (maxStreak >= 5)
+                    unlockAchievement("Cinco fantasmas menos.");
+
+                if (maxStreak >= 8)
+                    unlockAchievement("Te estás volviendo frío.");
+
+                // Letras
+                if (correctLetters >= 30)
+                    unlockAchievement("Adivinas lo que nunca te dije.");
+
+                if (wrongLetters >= 30)
+                    unlockAchievement("Siempre elegías la letra equivocada.");
+
+                // Intentos totales
+                if (totalAttempts >= 100)
+                    unlockAchievement("Sigues intentando.");
+
+                if (totalAttempts >= 250)
+                    unlockAchievement("No sabes cuándo parar.");
+
+                // Logros oscuros secretos
+                if (score < 0)
+                    unlockAchievement("Tocaste fondo.");
+
+                if (losses >= 20 && score < 50)
+                    unlockAchievement("Te quedaste atrapado en el pasado.");
+
+                if (wins >= 20 && score > 500)
+                    unlockAchievement("Ya no eres el mismo.");
+            }
+
+        newGame();
+
+    </script>
+
+</body>
+
+</html>
